@@ -3,7 +3,7 @@
 ##
 image:
   registry: docker.io
-  repository: bitnami/wordpress
+  repository: bitnamilegacy/wordpress
   tag: 4.9.8-debian-9
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'

@@ -296,6 +296,93 @@ func (_c *RepoServerServiceClient_GetAppDetails_Call) RunAndReturn(run func(ctx 
 	return _c
 }
 
+// GetChangeRevision provides a mock function for the type RepoServerServiceClient
+func (_mock *RepoServerServiceClient) GetChangeRevision(ctx context.Context, in *apiclient.ChangeRevisionRequest, opts ...grpc.CallOption) (*apiclient.ChangeRevisionResponse, error) {
+	// grpc.CallOption
+	_va := make([]interface{}, len(opts))
+	for _i := range opts {
+		_va[_i] = opts[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, ctx, in)
+	_ca = append(_ca, _va...)
+	ret := _mock.Called(_ca...)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetChangeRevision")
+	}
+
+	var r0 *apiclient.ChangeRevisionResponse
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *apiclient.ChangeRevisionRequest, ...grpc.CallOption) (*apiclient.ChangeRevisionResponse, error)); ok {
+		return returnFunc(ctx, in, opts...)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, *apiclient.ChangeRevisionRequest, ...grpc.CallOption) *apiclient.ChangeRevisionResponse); ok {
+		r0 = returnFunc(ctx, in, opts...)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*apiclient.ChangeRevisionResponse)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, *apiclient.ChangeRevisionRequest, ...grpc.CallOption) error); ok {
+		r1 = returnFunc(ctx, in, opts...)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// RepoServerServiceClient_GetChangeRevision_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetChangeRevision'
+type RepoServerServiceClient_GetChangeRevision_Call struct {
+	*mock.Call
+}
+
+// GetChangeRevision is a helper method to define mock.On call
+//   - ctx context.Context
+//   - in *apiclient.ChangeRevisionRequest
+//   - opts ...grpc.CallOption
+func (_e *RepoServerServiceClient_Expecter) GetChangeRevision(ctx interface{}, in interface{}, opts ...interface{}) *RepoServerServiceClient_GetChangeRevision_Call {
+	return &RepoServerServiceClient_GetChangeRevision_Call{Call: _e.mock.On("GetChangeRevision",
+		append([]interface{}{ctx, in}, opts...)...)}
+}
+
+func (_c *RepoServerServiceClient_GetChangeRevision_Call) Run(run func(ctx context.Context, in *apiclient.ChangeRevisionRequest, opts ...grpc.CallOption)) *RepoServerServiceClient_GetChangeRevision_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 *apiclient.ChangeRevisionRequest
+		if args[1] != nil {
+			arg1 = args[1].(*apiclient.ChangeRevisionRequest)
+		}
+		var arg2 []grpc.CallOption
+		variadicArgs := make([]grpc.CallOption, len(args)-2)
+		for i, a := range args[2:] {
+			if a != nil {
+				variadicArgs[i] = a.(grpc.CallOption)
+			}
+		}
+		arg2 = variadicArgs
+		run(
+			arg0,
+			arg1,
+			arg2...,
+		)
+	})
+	return _c
+}
+
+func (_c *RepoServerServiceClient_GetChangeRevision_Call) Return(changeRevisionResponse *apiclient.ChangeRevisionResponse, err error) *RepoServerServiceClient_GetChangeRevision_Call {
+	_c.Call.Return(changeRevisionResponse, err)
+	return _c
+}
+
+func (_c *RepoServerServiceClient_GetChangeRevision_Call) RunAndReturn(run func(ctx context.Context, in *apiclient.ChangeRevisionRequest, opts ...grpc.CallOption) (*apiclient.ChangeRevisionResponse, error)) *RepoServerServiceClient_GetChangeRevision_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetGitDirectories provides a mock function for the type RepoServerServiceClient
 func (_mock *RepoServerServiceClient) GetGitDirectories(ctx context.Context, in *apiclient.GitDirectoriesRequest, opts ...grpc.CallOption) (*apiclient.GitDirectoriesResponse, error) {
 	// grpc.CallOption

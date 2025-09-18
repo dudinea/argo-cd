@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/klog/v2"
 
+	changerevisioncontroller "github.com/argoproj/argo-cd/v3/cmd/application-change-revision-controller/commands"
 	appcontroller "github.com/argoproj/argo-cd/v3/cmd/argocd-application-controller/commands"
 	applicationset "github.com/argoproj/argo-cd/v3/cmd/argocd-applicationset-controller/commands"
 	cmpserver "github.com/argoproj/argo-cd/v3/cmd/argocd-cmp-server/commands"
@@ -49,6 +50,8 @@ func main() {
 		isArgocdCLI = true
 	case "argocd-server":
 		command = apiserver.NewCommand()
+	case "argocd-application-change-revision-controller":
+		command = changerevisioncontroller.NewCommand()
 	case "argocd-application-controller":
 		command = appcontroller.NewCommand()
 	case "argocd-repo-server":

@@ -427,6 +427,68 @@ func (_c *Client_CommitSHA_Call) RunAndReturn(run func() (string, error)) *Clien
 	return _c
 }
 
+// DiffTree provides a mock function for the type Client
+func (_mock *Client) DiffTree(targetRevision string) ([]string, error) {
+	ret := _mock.Called(targetRevision)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DiffTree")
+	}
+
+	var r0 []string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+		return returnFunc(targetRevision)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = returnFunc(targetRevision)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string) error); ok {
+		r1 = returnFunc(targetRevision)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// Client_DiffTree_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DiffTree'
+type Client_DiffTree_Call struct {
+	*mock.Call
+}
+
+// DiffTree is a helper method to define mock.On call
+//   - targetRevision string
+func (_e *Client_Expecter) DiffTree(targetRevision interface{}) *Client_DiffTree_Call {
+	return &Client_DiffTree_Call{Call: _e.mock.On("DiffTree", targetRevision)}
+}
+
+func (_c *Client_DiffTree_Call) Run(run func(targetRevision string)) *Client_DiffTree_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		run(
+			arg0,
+		)
+	})
+	return _c
+}
+
+func (_c *Client_DiffTree_Call) Return(strings []string, err error) *Client_DiffTree_Call {
+	_c.Call.Return(strings, err)
+	return _c
+}
+
+func (_c *Client_DiffTree_Call) RunAndReturn(run func(targetRevision string) ([]string, error)) *Client_DiffTree_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Fetch provides a mock function for the type Client
 func (_mock *Client) Fetch(revision string) error {
 	ret := _mock.Called(revision)
@@ -620,6 +682,74 @@ func (_c *Client_IsRevisionPresent_Call) Return(b bool) *Client_IsRevisionPresen
 }
 
 func (_c *Client_IsRevisionPresent_Call) RunAndReturn(run func(revision string) bool) *Client_IsRevisionPresent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListRevisions provides a mock function for the type Client
+func (_mock *Client) ListRevisions(revision string, targetRevision string) ([]string, error) {
+	ret := _mock.Called(revision, targetRevision)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListRevisions")
+	}
+
+	var r0 []string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(string, string) ([]string, error)); ok {
+		return returnFunc(revision, targetRevision)
+	}
+	if returnFunc, ok := ret.Get(0).(func(string, string) []string); ok {
+		r0 = returnFunc(revision, targetRevision)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(string, string) error); ok {
+		r1 = returnFunc(revision, targetRevision)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// Client_ListRevisions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListRevisions'
+type Client_ListRevisions_Call struct {
+	*mock.Call
+}
+
+// ListRevisions is a helper method to define mock.On call
+//   - revision string
+//   - targetRevision string
+func (_e *Client_Expecter) ListRevisions(revision interface{}, targetRevision interface{}) *Client_ListRevisions_Call {
+	return &Client_ListRevisions_Call{Call: _e.mock.On("ListRevisions", revision, targetRevision)}
+}
+
+func (_c *Client_ListRevisions_Call) Run(run func(revision string, targetRevision string)) *Client_ListRevisions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 string
+		if args[0] != nil {
+			arg0 = args[0].(string)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *Client_ListRevisions_Call) Return(strings []string, err error) *Client_ListRevisions_Call {
+	_c.Call.Return(strings, err)
+	return _c
+}
+
+func (_c *Client_ListRevisions_Call) RunAndReturn(run func(revision string, targetRevision string) ([]string, error)) *Client_ListRevisions_Call {
 	_c.Call.Return(run)
 	return _c
 }

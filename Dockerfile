@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=docker.io/library/ubuntu:24.04@sha256:80dd3c3b9c6cecb9f1667e9290b3bc61b78c2678c02cbdae5f0fea92cc6734ab
+ARG BASE_IMAGE=docker.io/library/ubuntu:25.04@sha256:10bb10bb062de665d4dc3e0ea36715270ead632cfcb74d08ca2273712a0dfb42
 ####################################################################################################
 # Builder image
 # Initial stage which pulls prepares build dependencies and CLI tooling we need for our final image
@@ -54,6 +54,9 @@ RUN groupadd -g $ARGOCD_USER_ID argocd && \
     git git-lfs tini gpg tzdata connect-proxy && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# To make sure that the latesst version of sqlite is installed that addresses this CVE-2025-6965
+RUN apt update && apt install --only-upgrade libsqlite3-0
 
 COPY hack/gpg-wrapper.sh \
     hack/git-verify-wrapper.sh \
@@ -138,6 +141,7 @@ COPY --from=argocd-build /go/src/github.com/argoproj/argo-cd/dist/argocd* /usr/l
 USER root
 RUN ln -s /usr/local/bin/argocd /usr/local/bin/argocd-server && \
     ln -s /usr/local/bin/argocd /usr/local/bin/argocd-repo-server && \
+    ln -s /usr/local/bin/argocd /usr/local/bin/argocd-application-change-revision-controller  && \
     ln -s /usr/local/bin/argocd /usr/local/bin/argocd-cmp-server && \
     ln -s /usr/local/bin/argocd /usr/local/bin/argocd-application-controller && \
     ln -s /usr/local/bin/argocd /usr/local/bin/argocd-dex && \

@@ -382,7 +382,7 @@ func (s *Server) GetAppDetails(ctx context.Context, q *repositorypkg.RepoAppDeta
 	if err != nil {
 		return nil, err
 	}
-	kustomizeOptions, err := kustomizeSettings.GetOptions(*q.Source)
+	kustomizeOptions, err := kustomizeSettings.GetOptions(*q.Source, s.settings.GetKustomizeSetNamespaceEnabled())
 	if err != nil {
 		return nil, err
 	}

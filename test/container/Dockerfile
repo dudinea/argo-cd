@@ -1,4 +1,4 @@
-FROM docker.io/library/redis:7.4.3@sha256:7df1eeff67eb0ba84f6b9d2940765a6bb1158081426745c185a03b1507de6a09 AS redis
+FROM docker.io/library/redis:8.2.1@sha256:cc2dfb8f5151da2684b4a09bd04b567f92d07591d91980eb3eca21df07e12760 AS redis
 
 # There are libraries we will want to copy from here in the final stage of the
 # build, but the COPY directive does not have a way to determine system
@@ -14,9 +14,13 @@ FROM docker.io/library/registry:3.0@sha256:1fc7de654f2ac1247f0b67e8a459e273b0993
 
 FROM docker.io/bitnamilegacy/kubectl:1.32@sha256:493d1b871556d48d6b25d471f192c2427571cd6f78523eebcaf4d263353c7487 AS kubectl
 
-FROM docker.io/library/ubuntu:24.04@sha256:1e622c5f073b4f6bfad6632f2616c7f59ef256e96fe78bf6a595d1dc4376ac02
+FROM docker.io/library/ubuntu:25.04@sha256:10bb10bb062de665d4dc3e0ea36715270ead632cfcb74d08ca2273712a0dfb42
 
 ENV DEBIAN_FRONTEND=noninteractive
+
+# NOTE: binutils-gold contains the gold linker, which was recently removed
+#       from binutils, but is still nesessary for building lint-tools on arm64 only
+#       until this Golang issue is fixed: https://github.com/golang/go/issues/22040
 RUN  apt-get update && apt-get install --fix-missing -y \
     ca-certificates \
     curl \
@@ -34,6 +38,9 @@ RUN  apt-get update && apt-get install --fix-missing -y \
     sudo \
     tini \
     zip && \
+    if [ "$(uname -m)" = "aarch64" ]; then \
+       apt-get install --fix-missing -y binutils-gold; \
+    fi && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
