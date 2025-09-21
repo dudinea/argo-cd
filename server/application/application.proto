@@ -562,4 +562,9 @@ service ApplicationService {
   rpc ListResourceLinks(ApplicationResourceRequest) returns (LinksResponse) {
     option (google.api.http).get = "/api/v1/applications/{name}/resource/links";
   }
+
+  // pass change revision request to the repo-server, required for acr controller
+  rpc GetChangeRevision(ChangeRevisionRequest) returns (ChangeRevisionResponse) {
+     option (google.api.http).get = "/api/v1/application/changeRevision";
+  }
 }
