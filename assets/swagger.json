@@ -218,6 +218,51 @@
         }
       }
     },
+    "/api/v1/application/changeRevision": {
+      "get": {
+        "tags": [
+          "ApplicationService"
+        ],
+        "summary": "pass change revision request to the repo-server, required for acr controller",
+        "operationId": "ApplicationService_GetChangeRevision",
+        "parameters": [
+          {
+            "type": "string",
+            "name": "appName",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "namespace",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "currentRevision",
+            "in": "query"
+          },
+          {
+            "type": "string",
+            "name": "previousRevision",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/applicationChangeRevisionResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        }
+      }
+    },
     "/api/v1/applications": {
       "get": {
         "tags": [
@@ -5117,6 +5162,14 @@
         },
         "canSync": {
           "type": "boolean"
+        }
+      }
+    },
+    "applicationChangeRevisionResponse": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "string"
         }
       }
     },
