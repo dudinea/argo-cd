@@ -274,7 +274,7 @@ func Test_ChangeRevision(r *testing.T) {
 		acrService := newTestACRService(client)
 		app := createTestApp(syncedAppWithHistory)
 
-		err := acrService.ChangeRevision(r.Context(), app)
+		err := acrService.ChangeRevision(r.Context(), app, false)
 		require.NoError(t, err)
 
 		app, err = acrService.applicationClientset.ArgoprojV1alpha1().Applications(app.Namespace).Get(r.Context(), app.Name, metav1.GetOptions{})
@@ -296,7 +296,7 @@ func Test_ChangeRevision(r *testing.T) {
 
 		app := createTestApp(syncedAppWithHistory)
 
-		err := acrService.ChangeRevision(r.Context(), app)
+		err := acrService.ChangeRevision(r.Context(), app, false)
 		require.NoError(t, err)
 
 		app, err = acrService.applicationClientset.ArgoprojV1alpha1().Applications(app.Namespace).Get(r.Context(), app.Name, metav1.GetOptions{})
@@ -304,7 +304,7 @@ func Test_ChangeRevision(r *testing.T) {
 
 		assert.Equal(t, "new-revision", app.Status.OperationState.Operation.Sync.ChangeRevision)
 
-		err = acrService.ChangeRevision(r.Context(), app)
+		err = acrService.ChangeRevision(r.Context(), app, false)
 
 		require.NoError(t, err)
 

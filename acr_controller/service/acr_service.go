@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -16,8 +17,15 @@ import (
 	appclientset "github.com/argoproj/argo-cd/v3/pkg/client/clientset/versioned"
 )
 
+const (
+	CHANGE_REVISION_ANN  = "mrp-controller.argoproj.io/change-revision"
+	CHANGE_REVISIONS_ANN = "mrp-controller.argoproj.io/change-revisions"
+	GIT_REVISION_ANN     = "mrp-controller.argoproj.io/git-revision"
+	GIT_REVISIONS_ANN    = "mrp-controller.argoproj.io/git-revisions"
+)
+
 type ACRService interface {
-	ChangeRevision(ctx context.Context, application *application.Application) error
+	ChangeRevision(ctx context.Context, application *application.Application, useAnnotations bool) error
 }
 
 type acrService struct {
@@ -55,7 +63,7 @@ func getChangeRevision(app *application.Application) string {
 	return ""
 }
 
-func (c *acrService) ChangeRevision(ctx context.Context, a *application.Application) error {
+func (c *acrService) ChangeRevision(ctx context.Context, a *application.Application, useAnnotations bool) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -73,36 +81,96 @@ func (c *acrService) ChangeRevision(ctx context.Context, a *application.Applicat
 		return nil
 	}
 
-	revision, err := c.calculateRevision(ctx, app)
+	currentRevision, previousRevision := c.getRevisions(ctx, a)
+	revision, err := c.calculateRevision(ctx, app, currentRevision, previousRevision)
 	if err != nil {
 		return err
 	}
 
+	var revisions []string
 	if revision == nil || *revision == "" {
 		c.logger.Infof("Revision for application %s is empty", app.Name)
-		return nil
+	} else {
+		c.logger.Infof("Change revision for application %s is %s", app.Name, *revision)
+		revisions = []string{*revision}
 	}
-
-	c.logger.Infof("Change revision for application %s is %s", app.Name, *revision)
 
 	app, err = c.applicationClientset.ArgoprojV1alpha1().Applications(app.Namespace).Get(ctx, app.Name, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
 
-	revisions := []string{*revision}
+	patchMap := make(map[string]any, 2)
 
-	if app.Status.OperationState != nil && app.Status.OperationState.Operation.Sync != nil {
-		c.logger.Infof("Patch operation status for application %s", app.Name)
-		return c.patchOperationSyncResultWithChangeRevision(ctx, app, revisions)
+	if len(revisions) > 0 {
+		if app.Status.OperationState != nil && app.Status.OperationState.Operation.Sync != nil {
+			c.logger.Infof("Patch operation status for application %s", app.Name)
+			patchMap = c.patchOperationSyncResultWithChangeRevision(ctx, app, revisions)
+		} else {
+			c.logger.Infof("Patch operation for application %s", app.Name)
+			patchMap = c.patchOperationWithChangeRevision(ctx, app, revisions)
+		}
 	}
-
-	c.logger.Infof("Patch operation for application %s", app.Name)
-	return c.patchOperationWithChangeRevision(ctx, app, revisions)
+	if useAnnotations {
+		err = c.addAnnotationPatch(patchMap, app, *revision, revisions, currentRevision, []string{currentRevision})
+		if err != nil {
+			return err
+		}
+	}
+	if len(patchMap) > 0 {
+		c.logger.Infof("patching resource: %v", patchMap)
+		patch, err := json.Marshal(patchMap)
+		if err != nil {
+			return err
+		}
+		_, err = c.applicationClientset.ArgoprojV1alpha1().Applications(a.Namespace).Patch(ctx, a.Name, types.MergePatchType, patch, metav1.PatchOptions{})
+		return err
+	} else {
+		c.logger.Infof("no patch needed")
+		return nil
+	}
 }
 
-func (c *acrService) calculateRevision(ctx context.Context, a *application.Application) (*string, error) {
-	currentRevision, previousRevision := c.getRevisions(ctx, a)
+func addPatchIfNeeded(annotations map[string]string, currentAnnotations map[string]string, key string, val string) {
+	currentVal, ok := currentAnnotations[key]
+	if !ok || currentVal != val {
+		annotations[key] = val
+	}
+}
+
+func (c *acrService) addAnnotationPatch(m map[string]any,
+	a *application.Application,
+	changeRevision string,
+	changeRevisions []string,
+	gitRevision string,
+	gitRevisions []string) error {
+	c.logger.Infof("annotating application '%s', changeRevision=%s, changeRevisions=%v, gitRevision=%s, gitRevisions=%v", a.Name, changeRevision, changeRevisions, gitRevision, gitRevisions)
+	annotations := map[string]string{}
+	currentAnnotations := a.Annotations
+
+	changeRevisionsJson, err := json.Marshal(changeRevisions)
+	if err != nil {
+		return fmt.Errorf("Failed to marshall changeRevisions %v: %v", changeRevisions, err)
+	}
+	gitRevisionsJson, err := json.Marshal(gitRevisions)
+	if err != nil {
+		return fmt.Errorf("Failed to marshall gitRevisions %v: %v", gitRevisions, err)
+	}
+
+	addPatchIfNeeded(annotations, currentAnnotations, CHANGE_REVISION_ANN, changeRevision)
+	addPatchIfNeeded(annotations, currentAnnotations, CHANGE_REVISIONS_ANN, string(changeRevisionsJson))
+	addPatchIfNeeded(annotations, currentAnnotations, GIT_REVISION_ANN, gitRevision)
+	addPatchIfNeeded(annotations, currentAnnotations, GIT_REVISIONS_ANN, string(gitRevisionsJson))
+
+	if len(annotations) == 0 {
+		c.logger.Info("no need to add annotations")
+	}
+	c.logger.Infof("added annotations to application %s patch: %v", a.Name, annotations)
+	m["metadata"] = map[string]any{"annotations": annotations}
+	return nil
+}
+
+func (c *acrService) calculateRevision(ctx context.Context, a *application.Application, currentRevision string, previousRevision string) (*string, error) {
 	c.logger.Infof("Calculate revision for application '%s', current revision '%s', previous revision '%s'", a.Name, currentRevision, previousRevision)
 	changeRevisionResult, err := c.applicationServiceClient.GetChangeRevision(ctx, &appclient.ChangeRevisionRequest{
 		AppName:          ptr.To(a.GetName()),
@@ -116,33 +184,28 @@ func (c *acrService) calculateRevision(ctx context.Context, a *application.Appli
 	return changeRevisionResult.Revision, nil
 }
 
-func (c *acrService) patchOperationWithChangeRevision(ctx context.Context, a *application.Application, revisions []string) error {
+func (c *acrService) patchOperationWithChangeRevision(ctx context.Context, a *application.Application, revisions []string) map[string]any {
 	if len(revisions) == 1 {
-		patch, _ := json.Marshal(map[string]any{
+		return map[string]any{
 			"operation": map[string]any{
 				"sync": map[string]any{
 					"changeRevision": revisions[0],
 				},
 			},
-		})
-		_, err := c.applicationClientset.ArgoprojV1alpha1().Applications(a.Namespace).Patch(ctx, a.Name, types.MergePatchType, patch, metav1.PatchOptions{})
-		return err
+		}
 	}
-
-	patch, _ := json.Marshal(map[string]any{
+	return map[string]any{
 		"operation": map[string]any{
 			"sync": map[string]any{
 				"changeRevisions": revisions,
 			},
 		},
-	})
-	_, err := c.applicationClientset.ArgoprojV1alpha1().Applications(a.Namespace).Patch(ctx, a.Name, types.MergePatchType, patch, metav1.PatchOptions{})
-	return err
+	}
 }
 
-func (c *acrService) patchOperationSyncResultWithChangeRevision(ctx context.Context, a *application.Application, revisions []string) error {
+func (c *acrService) patchOperationSyncResultWithChangeRevision(ctx context.Context, a *application.Application, revisions []string) map[string]any {
 	if len(revisions) == 1 {
-		patch, _ := json.Marshal(map[string]any{
+		return map[string]any{
 			"status": map[string]any{
 				"operationState": map[string]any{
 					"operation": map[string]any{
@@ -152,12 +215,9 @@ func (c *acrService) patchOperationSyncResultWithChangeRevision(ctx context.Cont
 					},
 				},
 			},
-		})
-		_, err := c.applicationClientset.ArgoprojV1alpha1().Applications(a.Namespace).Patch(ctx, a.Name, types.MergePatchType, patch, metav1.PatchOptions{})
-		return err
+		}
 	}
-
-	patch, _ := json.Marshal(map[string]any{
+	return map[string]any{
 		"status": map[string]any{
 			"operationState": map[string]any{
 				"operation": map[string]any{
@@ -167,9 +227,7 @@ func (c *acrService) patchOperationSyncResultWithChangeRevision(ctx context.Cont
 				},
 			},
 		},
-	})
-	_, err := c.applicationClientset.ArgoprojV1alpha1().Applications(a.Namespace).Patch(ctx, a.Name, types.MergePatchType, patch, metav1.PatchOptions{})
-	return err
+	}
 }
 
 func getCurrentRevisionFromOperation(a *application.Application) string {

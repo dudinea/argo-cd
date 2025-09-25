@@ -54,6 +54,7 @@ type ACRServerOpts struct {
 	ApplicationNamespaces    []string
 	BaseHRef                 string
 	RootPath                 string
+	DisableAnnotations       bool
 }
 
 type handlerSwitcher struct {
@@ -96,7 +97,7 @@ func (a *ACRServer) Init(ctx context.Context) {
 }
 
 func (a *ACRServer) RunController(ctx context.Context) {
-	controller := acr_controller.NewApplicationChangeRevisionController(a.appInformer, a.ApplicationServiceClient, a.applicationClientset)
+	controller := acr_controller.NewApplicationChangeRevisionController(a.appInformer, a.ApplicationServiceClient, a.applicationClientset, !a.DisableAnnotations)
 	go controller.Run(ctx)
 }
 

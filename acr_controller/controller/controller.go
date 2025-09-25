@@ -24,9 +24,10 @@ type ACRController interface {
 type applicationChangeRevisionController struct {
 	appBroadcaster Broadcaster
 	acrService     service.ACRService
+	useAnnotations bool
 }
 
-func NewApplicationChangeRevisionController(appInformer cache.SharedIndexInformer, applicationServiceClient appclient.ApplicationClient, applicationClientset appclientset.Interface) ACRController {
+func NewApplicationChangeRevisionController(appInformer cache.SharedIndexInformer, applicationServiceClient appclient.ApplicationClient, applicationClientset appclientset.Interface, useAnnotations bool) ACRController {
 	appBroadcaster := NewBroadcaster()
 	_, err := appInformer.AddEventHandler(appBroadcaster)
 	if err != nil {
@@ -35,6 +36,7 @@ func NewApplicationChangeRevisionController(appInformer cache.SharedIndexInforme
 	return &applicationChangeRevisionController{
 		appBroadcaster: appBroadcaster,
 		acrService:     service.NewACRService(applicationClientset, applicationServiceClient),
+		useAnnotations: useAnnotations,
 	}
 }
 
@@ -46,7 +48,7 @@ func (c *applicationChangeRevisionController) Run(ctx context.Context) {
 			return nil // ignore this event
 		}
 
-		return c.acrService.ChangeRevision(ctx, &a)
+		return c.acrService.ChangeRevision(ctx, &a, c.useAnnotations)
 	}
 
 	// TODO: move to abstraction

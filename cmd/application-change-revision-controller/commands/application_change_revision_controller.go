@@ -61,6 +61,7 @@ func NewCommand() *cobra.Command {
 		applicationNamespaces    []string
 		argocdToken              string
 		rootpath                 string
+		disableAnnotations       bool
 	)
 	command := &cobra.Command{
 		Use:               cliName,
@@ -114,6 +115,7 @@ func NewCommand() *cobra.Command {
 				RedisClient:              redisClient,
 				ApplicationNamespaces:    applicationNamespaces,
 				ApplicationServiceClient: getApplicationClient(applicationServerAddress, argocdToken, rootpath),
+				DisableAnnotations:       disableAnnotations,
 			}
 
 			log.Info("Starting change revision controller server")
@@ -145,6 +147,7 @@ func NewCommand() *cobra.Command {
 	command.Flags().IntVar(&listenPort, "port", common.DefaultPortACRServer, "Listen on given port")
 	command.Flags().StringVar(&contentSecurityPolicy, "content-security-policy", env.StringFromEnv("ACR_CONTROLLER_CONTENT_SECURITY_POLICY", "frame-ancestors 'self';"), "Set Content-Security-Policy header in HTTP responses to `value`. To disable, set to \"\".")
 	command.Flags().StringSliceVar(&applicationNamespaces, "application-namespaces", env.StringsFromEnv("ARGOCD_APPLICATION_NAMESPACES", []string{}, ","), "List of additional namespaces where application resources can be managed in")
+	command.Flags().BoolVar(&disableAnnotations, "disable-annotations", env.ParseBoolFromEnv("ACR_CONTROLLER_DISABLE_AMMOTATIONS", false), "Disable generating the monorepo-controller compatible annotations")
 	cacheSrc = servercache.AddCacheFlagsToCmd(command, cacheutil.Options{
 		OnClientCreated: func(client *redis.Client) {
 			redisClient = client
