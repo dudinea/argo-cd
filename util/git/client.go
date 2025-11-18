@@ -58,20 +58,6 @@ var builtinGitConfig = map[string]string{
 // format acceptable by Git.
 var builtinGitConfigEnv []string
 
-// InitBuiltinGitConfig initializes builtinGitConfigEnv on server startup
-func InitBuiltinGitConfig(enabled bool) {
-	builtinGitConfigEnv = []string{}
-	if enabled {
-		builtinGitConfigEnv = append(builtinGitConfigEnv, fmt.Sprintf("GIT_CONFIG_COUNT=%d", len(builtinGitConfig)))
-		idx := 0
-		for k, v := range builtinGitConfig {
-			builtinGitConfigEnv = append(builtinGitConfigEnv, fmt.Sprintf("GIT_CONFIG_KEY_%d=%s", idx, k))
-			builtinGitConfigEnv = append(builtinGitConfigEnv, fmt.Sprintf("GIT_CONFIG_VALUE_%d=%s", idx, v))
-			idx++
-		}
-	}
-}
-
 // CommitMetadata contains metadata about a commit that is related in some way to another commit.
 type CommitMetadata struct {
 	// Author is the author of the commit.
@@ -189,6 +175,8 @@ type nativeGitClient struct {
 	proxy string
 	// list of targets that shouldn't use the proxy, applies only if the proxy is set
 	noProxy string
+	// builtin Git Configuration
+	enableBuiltinConfig bool
 }
 
 type runOpts struct {
@@ -215,6 +203,15 @@ func init() {
 	maxRetryDuration = env.ParseDurationFromEnv(common.EnvGitRetryMaxDuration, common.DefaultGitRetryMaxDuration, 0, math.MaxInt64)
 	retryDuration = env.ParseDurationFromEnv(common.EnvGitRetryDuration, common.DefaultGitRetryDuration, 0, math.MaxInt64)
 	factor = env.ParseInt64FromEnv(common.EnvGitRetryFactor, common.DefaultGitRetryFactor, 0, math.MaxInt64)
+
+	builtinGitConfigEnv = append(builtinGitConfigEnv, fmt.Sprintf("GIT_CONFIG_COUNT=%d", len(builtinGitConfig)))
+	idx := 0
+	for k, v := range builtinGitConfig {
+		builtinGitConfigEnv = append(builtinGitConfigEnv, fmt.Sprintf("GIT_CONFIG_KEY_%d=%s", idx, k))
+		builtinGitConfigEnv = append(builtinGitConfigEnv, fmt.Sprintf("GIT_CONFIG_VALUE_%d=%s", idx, v))
+		idx++
+	}
+
 }
 
 type ClientOpts func(c *nativeGitClient)
@@ -234,7 +231,7 @@ func WithEventHandlers(handlers EventHandlers) ClientOpts {
 	}
 }
 
-func NewClient(rawRepoURL string, creds Creds, insecure bool, enableLfs bool, proxy string, noProxy string, opts ...ClientOpts) (Client, error) {
+func NewClient(rawRepoURL string, creds Creds, insecure bool, enableLfs bool, proxy string, noProxy string, enableBuiltinConfig bool, opts ...ClientOpts) (Client, error) {
 	r := regexp.MustCompile(`([/:])`)
 	normalizedGitURL := NormalizeGitURL(rawRepoURL)
 	if normalizedGitURL == "" {
@@ -244,18 +241,19 @@ func NewClient(rawRepoURL string, creds Creds, insecure bool, enableLfs bool, pr
 	if root == os.TempDir() {
 		return nil, fmt.Errorf("repository %q cannot be initialized, because its root would be system temp at %s", rawRepoURL, root)
 	}
-	return NewClientExt(rawRepoURL, root, creds, insecure, enableLfs, proxy, noProxy, opts...)
+	return NewClientExt(rawRepoURL, root, creds, insecure, enableLfs, proxy, noProxy, enableBuiltinConfig, opts...)
 }
 
-func NewClientExt(rawRepoURL string, root string, creds Creds, insecure bool, enableLfs bool, proxy string, noProxy string, opts ...ClientOpts) (Client, error) {
+func NewClientExt(rawRepoURL string, root string, creds Creds, insecure bool, enableLfs bool, proxy string, noProxy string, enableBuiltinConfig bool, opts ...ClientOpts) (Client, error) {
 	client := &nativeGitClient{
-		repoURL:   rawRepoURL,
-		root:      root,
-		creds:     creds,
-		insecure:  insecure,
-		enableLfs: enableLfs,
-		proxy:     proxy,
-		noProxy:   noProxy,
+		repoURL:             rawRepoURL,
+		root:                root,
+		creds:               creds,
+		insecure:            insecure,
+		enableLfs:           enableLfs,
+		proxy:               proxy,
+		noProxy:             noProxy,
+		enableBuiltinConfig: enableBuiltinConfig,
 	}
 	for i := range opts {
 		opts[i](client)
@@ -1152,7 +1150,9 @@ func (m *nativeGitClient) runCmdOutput(cmd *exec.Cmd, ropts runOpts) (string, er
 	// Disable Git terminal prompts in case we're running with a tty
 	cmd.Env = append(cmd.Env, "GIT_TERMINAL_PROMPT=false")
 	// Add Git configuration options that are essential for ArgoCD operation
-	cmd.Env = append(cmd.Env, builtinGitConfigEnv...)
+	if m.enableBuiltinConfig {
+		cmd.Env = append(cmd.Env, builtinGitConfigEnv...)
+	}
 
 	// For HTTPS repositories, we need to consider insecure repositories as well
 	// as custom CA bundles from the cert database.

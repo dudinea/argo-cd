@@ -28,5 +28,5 @@ func NewRepoClientFactory(gitCredsStore git.CredsStore, metricsServer *metrics.S
 func (r *repoClientFactory) NewClient(repo *v1alpha1.Repository, rootPath string) (git.Client, error) {
 	gitCreds := repo.GetGitCreds(r.gitCredsStore)
 	opts := git.WithEventHandlers(metrics.NewGitClientEventHandlers(r.metricsServer))
-	return git.NewClientExt(repo.Repo, rootPath, gitCreds, repo.IsInsecure(), repo.IsLFSEnabled(), repo.Proxy, repo.NoProxy, opts)
+	return git.NewClientExt(repo.Repo, rootPath, gitCreds, repo.IsInsecure(), repo.IsLFSEnabled(), repo.Proxy, repo.NoProxy, true, opts)
 }

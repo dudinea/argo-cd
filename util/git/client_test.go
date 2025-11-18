@@ -62,7 +62,7 @@ func Test_nativeGitClient_Fetch(t *testing.T) {
 	tempDir, err := _createEmptyGitRepo(t.Context())
 	require.NoError(t, err)
 
-	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -77,7 +77,7 @@ func Test_nativeGitClient_Fetch_Prune(t *testing.T) {
 	tempDir, err := _createEmptyGitRepo(ctx)
 	require.NoError(t, err)
 
-	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -101,7 +101,7 @@ func Test_nativeGitClient_Fetch_Prune(t *testing.T) {
 func Test_IsAnnotatedTag(t *testing.T) {
 	tempDir := t.TempDir()
 	ctx := t.Context()
-	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -160,7 +160,7 @@ func Test_ChangedFiles(t *testing.T) {
 	tempDir := t.TempDir()
 	ctx := t.Context()
 
-	client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -216,7 +216,7 @@ func Test_SemverTags(t *testing.T) {
 	tempDir := t.TempDir()
 	ctx := t.Context()
 
-	client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -392,7 +392,7 @@ func Test_nativeGitClient_Submodule(t *testing.T) {
 	err = runCmd(ctx, tempDir, "git", "clone", foo)
 	require.NoError(t, err)
 
-	client, err := NewClient("file://"+foo, NopCreds{}, true, false, "", "")
+	client, err := NewClient("file://"+foo, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -440,7 +440,7 @@ func Test_nativeGitClient_Submodule(t *testing.T) {
 }
 
 func TestNewClient_invalidSSHURL(t *testing.T) {
-	client, err := NewClient("ssh://bitbucket.org:org/repo", NopCreds{}, false, false, "", "")
+	client, err := NewClient("ssh://bitbucket.org:org/repo", NopCreds{}, false, false, "", "", true)
 	assert.Nil(t, client)
 	assert.ErrorIs(t, err, ErrInvalidRepoURL)
 }
@@ -449,7 +449,7 @@ func Test_IsRevisionPresent(t *testing.T) {
 	tempDir := t.TempDir()
 	ctx := t.Context()
 
-	client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -483,7 +483,7 @@ func Test_IsRevisionPresent(t *testing.T) {
 
 func Test_nativeGitClient_RevisionMetadata(t *testing.T) {
 	tempDir := t.TempDir()
-	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -560,7 +560,7 @@ func Test_nativeGitClient_SetAuthor(t *testing.T) {
 	tempDir, err := _createEmptyGitRepo(ctx)
 	require.NoError(t, err)
 
-	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -591,7 +591,7 @@ func Test_nativeGitClient_CheckoutOrOrphan(t *testing.T) {
 		tempDir, err := _createEmptyGitRepo(ctx)
 		require.NoError(t, err)
 
-		client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "")
+		client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "", true)
 		require.NoError(t, err)
 
 		err = client.Init()
@@ -657,7 +657,7 @@ func Test_nativeGitClient_CheckoutOrOrphan(t *testing.T) {
 		tempDir, err = os.MkdirTemp("", "")
 		require.NoError(t, err)
 
-		client, err := NewClientExt(originGitRepoURL, tempDir, NopCreds{}, true, false, "", "")
+		client, err := NewClientExt(originGitRepoURL, tempDir, NopCreds{}, true, false, "", "", true)
 		require.NoError(t, err)
 
 		err = client.Init()
@@ -722,7 +722,7 @@ func Test_nativeGitClient_CheckoutOrNew(t *testing.T) {
 		tempDir, err := _createEmptyGitRepo(ctx)
 		require.NoError(t, err)
 
-		client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "")
+		client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "", true)
 		require.NoError(t, err)
 
 		err = client.Init()
@@ -782,7 +782,7 @@ func Test_nativeGitClient_CheckoutOrNew(t *testing.T) {
 		tempDir, err := _createEmptyGitRepo(ctx)
 		require.NoError(t, err)
 
-		client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "")
+		client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "", true)
 		require.NoError(t, err)
 
 		err = client.Init()
@@ -822,7 +822,7 @@ func Test_nativeGitClient_RemoveContents_SpecificPath(t *testing.T) {
 	tempDir, err := _createEmptyGitRepo(ctx)
 	require.NoError(t, err)
 
-	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -876,7 +876,7 @@ func Test_nativeGitClient_CommitAndPush(t *testing.T) {
 	require.NoError(t, err)
 	branch := strings.TrimSpace(string(gitCurrentBranch))
 
-	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClient("file://"+tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -1051,9 +1051,9 @@ func Test_LsFiles_RaceCondition(t *testing.T) {
 	tempDir2 := t.TempDir()
 	ctx := t.Context()
 
-	client1, err := NewClient("file://"+tempDir1, NopCreds{}, true, false, "", "")
+	client1, err := NewClient("file://"+tempDir1, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
-	client2, err := NewClient("file://"+tempDir2, NopCreds{}, true, false, "", "")
+	client2, err := NewClient("file://"+tempDir2, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client1.Init()
@@ -1232,11 +1232,11 @@ Argocd-reference-commit-repourl: https://github.com/another/repo.git`,
 func Test_BuiltinConfig(t *testing.T) {
 	ctx := t.Context()
 	tempDir := t.TempDir()
-	client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "")
-	require.NoError(t, err)
-	native := client.(*nativeGitClient)
 	for _, enabled := range []bool{false, true} {
-		InitBuiltinGitConfig(enabled)
+		client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "", enabled)
+		require.NoError(t, err)
+		native := client.(*nativeGitClient)
+
 		configOut, err := native.config(ctx, "--list", "--show-origin")
 		require.NoError(t, err)
 		for k, v := range builtinGitConfig {
@@ -1252,11 +1252,10 @@ func Test_BuiltinConfig(t *testing.T) {
 }
 
 func Test_GitNoDetachedMaintenance(t *testing.T) {
-	InitBuiltinGitConfig(true)
 	tempDir := t.TempDir()
 	ctx := t.Context()
 
-	client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "")
+	client, err := NewClientExt("file://"+tempDir, tempDir, NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 	native := client.(*nativeGitClient)
 

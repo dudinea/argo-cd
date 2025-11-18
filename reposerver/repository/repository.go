@@ -91,7 +91,7 @@ type Service struct {
 	parallelismLimitSemaphore *semaphore.Weighted
 	metricsServer             *metrics.MetricsServer
 	newOCIClient              func(repoURL string, creds oci.Creds, proxy string, noProxy string, mediaTypes []string, opts ...oci.ClientOpts) (oci.Client, error)
-	newGitClient              func(rawRepoURL string, root string, creds git.Creds, insecure bool, enableLfs bool, proxy string, noProxy string, opts ...git.ClientOpts) (git.Client, error)
+	newGitClient              func(rawRepoURL string, root string, creds git.Creds, insecure bool, enableLfs bool, proxy string, noProxy string, enableBuiltinConfig bool, opts ...git.ClientOpts) (git.Client, error)
 	newHelmClient             func(repoURL string, creds helm.Creds, enableOci bool, proxy string, noProxy string, opts ...helm.ClientOpts) helm.Client
 	initConstants             RepoServerInitConstants
 	// now is usually just time.Now, but may be replaced by unit tests for testing purposes
@@ -117,6 +117,7 @@ type RepoServerInitConstants struct {
 	DisableHelmManifestMaxExtractedSize          bool
 	IncludeHiddenDirectories                     bool
 	CMPUseManifestGeneratePaths                  bool
+	EnableBuiltinGitConfig                       bool
 }
 
 var manifestGenerateLock = sync.NewKeyLock()
@@ -2567,7 +2568,7 @@ func (s *Service) newClient(repo *v1alpha1.Repository, opts ...git.ClientOpts) (
 		return nil, err
 	}
 	opts = append(opts, git.WithEventHandlers(metrics.NewGitClientEventHandlers(s.metricsServer)))
-	return s.newGitClient(repo.Repo, repoPath, repo.GetGitCreds(s.gitCredsStore), repo.IsInsecure(), repo.EnableLFS, repo.Proxy, repo.NoProxy, opts...)
+	return s.newGitClient(repo.Repo, repoPath, repo.GetGitCreds(s.gitCredsStore), repo.IsInsecure(), repo.EnableLFS, repo.Proxy, repo.NoProxy, s.initConstants.EnableBuiltinGitConfig, opts...)
 }
 
 // newClientResolveRevision is a helper to perform the common task of instantiating a git client
@@ -2780,7 +2781,7 @@ func (s *Service) TestRepository(ctx context.Context, q *apiclient.TestRepositor
 	}
 	checks := map[string]func() error{
 		"git": func() error {
-			return git.TestRepo(repo.Repo, repo.GetGitCreds(s.gitCredsStore), repo.IsInsecure(), repo.IsLFSEnabled(), repo.Proxy, repo.NoProxy)
+			return git.TestRepo(repo.Repo, repo.GetGitCreds(s.gitCredsStore), repo.IsInsecure(), repo.IsLFSEnabled(), repo.Proxy, repo.NoProxy, s.initConstants.EnableBuiltinGitConfig)
 		},
 		"oci": func() error {
 			client, err := oci.NewClient(repo.Repo, repo.GetOCICreds(), repo.Proxy, repo.NoProxy, s.initConstants.OCIMediaTypes)
@@ -2839,7 +2840,7 @@ func (s *Service) ResolveRevision(ctx context.Context, q *apiclient.ResolveRevis
 			AmbiguousRevision: fmt.Sprintf("%v (%v)", ambiguousRevision, revision),
 		}, nil
 	}
-	gitClient, err := git.NewClient(repo.Repo, repo.GetGitCreds(s.gitCredsStore), repo.IsInsecure(), repo.IsLFSEnabled(), repo.Proxy, repo.NoProxy)
+	gitClient, err := git.NewClient(repo.Repo, repo.GetGitCreds(s.gitCredsStore), repo.IsInsecure(), repo.IsLFSEnabled(), repo.Proxy, repo.NoProxy, s.initConstants.EnableBuiltinGitConfig)
 	if err != nil {
 		return &apiclient.ResolveRevisionResponse{Revision: "", AmbiguousRevision: ""}, err
 	}

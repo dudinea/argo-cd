@@ -158,7 +158,7 @@ func newServiceWithOpt(t *testing.T, cf clientFunc, root string) (*Service, *git
 	t.Cleanup(cacheMocks.mockCache.StopRedisCallback)
 	service := NewService(metrics.NewMetricsServer(), cacheMocks.cache, RepoServerInitConstants{ParallelismLimit: 1}, &git.NoopCredsStore{}, root)
 
-	service.newGitClient = func(_ string, _ string, _ git.Creds, _ bool, _ bool, _ string, _ string, _ ...git.ClientOpts) (client git.Client, e error) {
+	service.newGitClient = func(_ string, _ string, _ git.Creds, _ bool, _ bool, _ string, _ string, _ bool, _ ...git.ClientOpts) (client git.Client, e error) {
 		return gitClient, nil
 	}
 	service.newHelmClient = func(_ string, _ helm.Creds, _ bool, _ string, _ string, _ ...helm.ClientOpts) helm.Client {
@@ -207,7 +207,7 @@ func newServiceWithCommitSHA(t *testing.T, root, revision string) *Service {
 		paths.EXPECT().GetPathIfExists(mock.Anything).Return(root)
 	}, root)
 
-	service.newGitClient = func(_ string, _ string, _ git.Creds, _ bool, _ bool, _ string, _ string, _ ...git.ClientOpts) (client git.Client, e error) {
+	service.newGitClient = func(_ string, _ string, _ git.Creds, _ bool, _ bool, _ string, _ string, _ bool, _ ...git.ClientOpts) (client git.Client, e error) {
 		return gitClient, nil
 	}
 
@@ -412,7 +412,7 @@ func TestGenerateManifest_RefOnlyShortCircuit(t *testing.T) {
 	cacheMocks := newCacheMocks()
 	t.Cleanup(cacheMocks.mockCache.StopRedisCallback)
 	service := NewService(metrics.NewMetricsServer(), cacheMocks.cache, RepoServerInitConstants{ParallelismLimit: 1}, &git.NoopCredsStore{}, repopath)
-	service.newGitClient = func(rawRepoURL string, root string, creds git.Creds, insecure bool, enableLfs bool, proxy string, noProxy string, opts ...git.ClientOpts) (client git.Client, e error) {
+	service.newGitClient = func(rawRepoURL string, root string, creds git.Creds, insecure bool, enableLfs bool, proxy string, noProxy string, enableGitConfig bool, opts ...git.ClientOpts) (client git.Client, e error) {
 		opts = append(opts, git.WithEventHandlers(git.EventHandlers{
 			// Primary check, we want to make sure ls-remote is not called when the item is in cache
 			OnLsRemote: func(_ string) func() {
@@ -426,7 +426,7 @@ func TestGenerateManifest_RefOnlyShortCircuit(t *testing.T) {
 				}
 			},
 		}))
-		gitClient, err := git.NewClientExt(rawRepoURL, root, creds, insecure, enableLfs, proxy, noProxy, opts...)
+		gitClient, err := git.NewClientExt(rawRepoURL, root, creds, insecure, enableLfs, proxy, noProxy, enableGitConfig, opts...)
 		return gitClient, err
 	}
 	revision := initGitRepo(t, newGitRepoOptions{
@@ -478,7 +478,7 @@ func TestGenerateManifestsHelmWithRefs_CachedNoLsRemote(t *testing.T) {
 	service := NewService(metrics.NewMetricsServer(), cacheMocks.cache, RepoServerInitConstants{ParallelismLimit: 1}, &git.NoopCredsStore{}, repopath)
 	var gitClient git.Client
 	var err error
-	service.newGitClient = func(rawRepoURL string, root string, creds git.Creds, insecure bool, enableLfs bool, proxy string, noProxy string, opts ...git.ClientOpts) (client git.Client, e error) {
+	service.newGitClient = func(rawRepoURL string, root string, creds git.Creds, insecure bool, enableLfs bool, proxy string, noProxy string, enableGitConfig bool, opts ...git.ClientOpts) (client git.Client, e error) {
 		opts = append(opts, git.WithEventHandlers(git.EventHandlers{
 			// Primary check, we want to make sure ls-remote is not called when the item is in cache
 			OnLsRemote: func(_ string) func() {
@@ -487,7 +487,7 @@ func TestGenerateManifestsHelmWithRefs_CachedNoLsRemote(t *testing.T) {
 				}
 			},
 		}))
-		gitClient, err = git.NewClientExt(rawRepoURL, root, creds, insecure, enableLfs, proxy, noProxy, opts...)
+		gitClient, err = git.NewClientExt(rawRepoURL, root, creds, insecure, enableLfs, proxy, noProxy, enableGitConfig, opts...)
 		return gitClient, err
 	}
 	repoRemote := "file://" + repopath
@@ -3167,7 +3167,7 @@ func TestCheckoutRevisionCanGetNonstandardRefs(t *testing.T) {
 	destRepoPath, err := os.MkdirTemp(rootPath, "")
 	require.NoError(t, err)
 
-	gitClient, err := git.NewClientExt("file://"+sourceRepoPath, destRepoPath, &git.NopCreds{}, true, false, "", "")
+	gitClient, err := git.NewClientExt("file://"+sourceRepoPath, destRepoPath, &git.NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	pullSha, err := gitClient.LsRemote("refs/pull/123/head")
@@ -3243,7 +3243,7 @@ func TestFetchRevisionCanGetNonstandardRefs(t *testing.T) {
 	destRepoPath, err := os.MkdirTemp(rootPath, "")
 	require.NoError(t, err)
 
-	gitClient, err := git.NewClientExt("file://"+sourceRepoPath, destRepoPath, &git.NopCreds{}, true, false, "", "")
+	gitClient, err := git.NewClientExt("file://"+sourceRepoPath, destRepoPath, &git.NopCreds{}, true, false, "", "", true)
 	require.NoError(t, err)
 
 	// We should initialize repository
@@ -4133,7 +4133,7 @@ func TestGetRefs_CacheWithLockDisabled(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			client, err := git.NewClient("file://"+dir, git.NopCreds{}, true, false, "", "", git.WithCache(cacheMocks.cache, true))
+			client, err := git.NewClient("file://"+dir, git.NopCreds{}, true, false, "", "", true, git.WithCache(cacheMocks.cache, true))
 			require.NoError(t, err)
 			refs, err := client.LsRefs()
 			require.NoError(t, err)
@@ -4160,7 +4160,7 @@ func TestGetRefs_CacheDisabled(t *testing.T) {
 	})
 	cacheMocks := newCacheMocks()
 	t.Cleanup(cacheMocks.mockCache.StopRedisCallback)
-	client, err := git.NewClient("file://"+dir, git.NopCreds{}, true, false, "", "", git.WithCache(cacheMocks.cache, false))
+	client, err := git.NewClient("file://"+dir, git.NopCreds{}, true, false, "", "", true, git.WithCache(cacheMocks.cache, false))
 	require.NoError(t, err)
 	refs, err := client.LsRefs()
 	require.NoError(t, err)
@@ -4189,7 +4189,7 @@ func TestGetRefs_CacheWithLock(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			client, err := git.NewClient("file://"+dir, git.NopCreds{}, true, false, "", "", git.WithCache(cacheMocks.cache, true))
+			client, err := git.NewClient("file://"+dir, git.NopCreds{}, true, false, "", "", true, git.WithCache(cacheMocks.cache, true))
 			require.NoError(t, err)
 			refs, err := client.LsRefs()
 			require.NoError(t, err)
@@ -4218,7 +4218,7 @@ func TestGetRefs_CacheUnlockedOnUpdateFailed(t *testing.T) {
 	cacheMocks := newCacheMocks()
 	t.Cleanup(cacheMocks.mockCache.StopRedisCallback)
 	repoURL := "file://" + dir
-	client, err := git.NewClient(repoURL, git.NopCreds{}, true, false, "", "", git.WithCache(cacheMocks.cache, true))
+	client, err := git.NewClient(repoURL, git.NopCreds{}, true, false, "", "", true, git.WithCache(cacheMocks.cache, true))
 	require.NoError(t, err)
 	refs, err := client.LsRefs()
 	require.NoError(t, err)
@@ -4249,7 +4249,7 @@ func TestGetRefs_CacheLockTryLockGitRefCacheError(t *testing.T) {
 	repoURL := "file://" + dir
 	// buf := bytes.Buffer{}
 	// log.SetOutput(&buf)
-	client, err := git.NewClient(repoURL, git.NopCreds{}, true, false, "", "", git.WithCache(cacheMocks.cache, true))
+	client, err := git.NewClient(repoURL, git.NopCreds{}, true, false, "", "", true, git.WithCache(cacheMocks.cache, true))
 	require.NoError(t, err)
 	refs, err := client.LsRefs()
 	require.NoError(t, err)
@@ -4578,7 +4578,7 @@ func TestGenerateManifest_OCISourceSkipsGitClient(t *testing.T) {
 	svc := newService(t, t.TempDir())
 
 	gitCalled := false
-	svc.newGitClient = func(_, _ string, _ git.Creds, _, _ bool, _, _ string, _ ...git.ClientOpts) (git.Client, error) {
+	svc.newGitClient = func(_, _ string, _ git.Creds, _, _ bool, _, _ string, _ bool, _ ...git.ClientOpts) (git.Client, error) {
 		gitCalled = true
 		return nil, errors.New("git should not be called for OCI")
 	}

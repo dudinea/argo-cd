@@ -210,7 +210,7 @@ func TestCustomHTTPClient(t *testing.T) {
 }
 
 func TestLsRemote(t *testing.T) {
-	clnt, err := NewClientExt("https://github.com/argoproj/argo-cd.git", "/tmp", NopCreds{}, false, false, "", "")
+	clnt, err := NewClientExt("https://github.com/argoproj/argo-cd.git", "/tmp", NopCreds{}, false, false, "", "", true)
 	require.NoError(t, err)
 
 	testCases := []struct {
@@ -306,7 +306,7 @@ func TestLFSClient(t *testing.T) {
 
 	tempDir := t.TempDir()
 
-	client, err := NewClientExt("https://github.com/argoproj-labs/argocd-testrepo-lfs", tempDir, NopCreds{}, false, true, "", "")
+	client, err := NewClientExt("https://github.com/argoproj-labs/argocd-testrepo-lfs", tempDir, NopCreds{}, false, true, "", "", true)
 	require.NoError(t, err)
 
 	commitSHA, err := client.LsRemote("HEAD")
@@ -345,7 +345,7 @@ func TestLFSClient(t *testing.T) {
 func TestVerifyCommitSignature(t *testing.T) {
 	p := t.TempDir()
 
-	client, err := NewClientExt("https://github.com/argoproj/argo-cd.git", p, NopCreds{}, false, false, "", "")
+	client, err := NewClientExt("https://github.com/argoproj/argo-cd.git", p, NopCreds{}, false, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
@@ -399,7 +399,7 @@ func TestNewFactory(t *testing.T) {
 
 		dirName := t.TempDir()
 
-		client, err := NewClientExt(tt.args.url, dirName, NopCreds{}, tt.args.insecureIgnoreHostKey, false, "", "")
+		client, err := NewClientExt(tt.args.url, dirName, NopCreds{}, tt.args.insecureIgnoreHostKey, false, "", "", true)
 		require.NoError(t, err)
 		commitSHA, err := client.LsRemote("HEAD")
 		require.NoError(t, err)
@@ -436,7 +436,7 @@ func TestListRevisions(t *testing.T) {
 	dir := t.TempDir()
 
 	repoURL := "https://github.com/argoproj/argo-cd.git"
-	client, err := NewClientExt(repoURL, dir, NopCreds{}, false, false, "", "")
+	client, err := NewClientExt(repoURL, dir, NopCreds{}, false, false, "", "", true)
 	require.NoError(t, err)
 
 	lsResult, err := client.LsRefs()
@@ -456,7 +456,7 @@ func TestLsFiles(t *testing.T) {
 	tmpDir2 := t.TempDir()
 	ctx := t.Context()
 
-	client, err := NewClientExt("", tmpDir1, NopCreds{}, false, false, "", "")
+	client, err := NewClientExt("", tmpDir1, NopCreds{}, false, false, "", "", true)
 	require.NoError(t, err)
 
 	require.NoError(t, runCmd(ctx, tmpDir1, "git", "init"))
@@ -513,7 +513,7 @@ func TestLsFilesForGitFileGeneratorGlobbingPatterns(t *testing.T) {
 	tmpDir := t.TempDir()
 	ctx := t.Context()
 
-	client, err := NewClientExt("", tmpDir, NopCreds{}, false, false, "", "")
+	client, err := NewClientExt("", tmpDir, NopCreds{}, false, false, "", "", true)
 	require.NoError(t, err)
 
 	err = runCmd(ctx, tmpDir, "git", "init")
@@ -693,7 +693,7 @@ func TestLsFilesForGitFileGeneratorGlobbingPatterns(t *testing.T) {
 func TestAnnotatedTagHandling(t *testing.T) {
 	dir := t.TempDir()
 
-	client, err := NewClientExt("https://github.com/argoproj/argo-cd.git", dir, NopCreds{}, false, false, "", "")
+	client, err := NewClientExt("https://github.com/argoproj/argo-cd.git", dir, NopCreds{}, false, false, "", "", true)
 	require.NoError(t, err)
 
 	err = client.Init()
