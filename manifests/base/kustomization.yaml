@@ -4,7 +4,7 @@ kind: Kustomization
 
 images:
 - name: quay.io/argoproj/argocd
-  newName: quay.io/eugened/argocd
+  newName: quay.io/argoproj/argocd
   newTag: v3.3.0-rc4
 resources:
 - ./application-controller
