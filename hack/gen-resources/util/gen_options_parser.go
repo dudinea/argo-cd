@@ -8,21 +8,42 @@ import (
 )
 
 type SourceOpts struct {
-	Strategy string `yaml:"strategy"`
+	RepoRegex      string `yaml:"repoRegex"`
+	TargetRevision string `yaml:"targetRevision"`
+	Path           string `yaml:"path"`
+	Strategy       string `yaml:"strategy"`
 }
 
 type DestinationOpts struct {
-	Strategy string `yaml:"strategy"`
+	Strategy  string `yaml:"strategy"`
+	Namespace string `yaml:"namespace"`
 }
 
 type ApplicationOpts struct {
+	Name            string          `yaml:"name"`
+	Namespace       string          `yaml:"namespace"`
 	Samples         int             `yaml:"samples"`
 	SourceOpts      SourceOpts      `yaml:"source"`
+	SourcesOpts     []SourceOpts    `yaml:"sources"`
 	DestinationOpts DestinationOpts `yaml:"destination"`
+	GeneratedName   string
 }
 
 type RepositoryOpts struct {
-	Samples int `yaml:"samples"`
+	Samples    int        `yaml:"samples"`
+	FixedRepos FixedRepos `yaml:"fixedRepos"`
+}
+
+type FixedRepos struct {
+	FixedReposList []FixedRepo `yaml:"fixedReposList"`
+	Samples        int         `yaml:"samples"`
+}
+
+type FixedRepo struct {
+	Name  string `yaml:"name"`
+	Org   string `yaml:"org"`
+	User  string `yaml:"user"`
+	Regex string `yaml:"regex"`
 }
 
 type ProjectOpts struct {
@@ -39,12 +60,12 @@ type ClusterOpts struct {
 }
 
 type GenerateOpts struct {
-	ApplicationOpts ApplicationOpts `yaml:"application"`
-	ClusterOpts     ClusterOpts     `yaml:"cluster"`
-	RepositoryOpts  RepositoryOpts  `yaml:"repository"`
-	ProjectOpts     ProjectOpts     `yaml:"project"`
-	GithubToken     string
-	Namespace       string `yaml:"namespace"`
+	ApplicationsOpts []ApplicationOpts `yaml:"applications"`
+	ClusterOpts      ClusterOpts       `yaml:"cluster"`
+	RepositoryOpts   RepositoryOpts    `yaml:"repository"`
+	ProjectOpts      ProjectOpts       `yaml:"project"`
+	GithubToken      string            `yaml:"githubToken"`
+	Namespace        string            `yaml:"namespace"`
 }
 
 func setDefaults(opts *GenerateOpts) {

@@ -2,22 +2,25 @@ package generator
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math/rand"
 	"time"
 
+	"github.com/argoproj/argo-cd/v3/hack/gen-resources/util"
 	"github.com/argoproj/argo-cd/v3/util/settings"
 
 	"github.com/argoproj/argo-cd/v3/util/db"
-
-	"github.com/argoproj/argo-cd/v3/hack/gen-resources/util"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 	appclientset "github.com/argoproj/argo-cd/v3/pkg/client/clientset/versioned"
+	appclientsetv1alpha1 "github.com/argoproj/argo-cd/v3/pkg/client/clientset/versioned/typed/application/v1alpha1"
 )
+
+var seed = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 type ApplicationGenerator struct {
 	argoClientSet *appclientset.Clientset
@@ -29,7 +32,6 @@ func NewApplicationGenerator(argoClientSet *appclientset.Clientset, clientSet *k
 }
 
 func (generator *ApplicationGenerator) buildRandomSource(repositories []*v1alpha1.Repository) (*v1alpha1.ApplicationSource, error) {
-	seed := rand.New(rand.NewSource(time.Now().Unix()))
 	repoNumber := seed.Int() % len(repositories)
 	return &v1alpha1.ApplicationSource{
 		RepoURL:        repositories[repoNumber].Repo,
@@ -38,26 +40,44 @@ func (generator *ApplicationGenerator) buildRandomSource(repositories []*v1alpha
 	}, nil
 }
 
-func (generator *ApplicationGenerator) buildSource(opts *util.GenerateOpts, repositories []*v1alpha1.Repository) (*v1alpha1.ApplicationSource, error) {
-	if opts.ApplicationOpts.SourceOpts.Strategy == "Random" {
+func (generator *ApplicationGenerator) buildSource(sourcespec *util.SourceOpts, repositories []*v1alpha1.Repository) (v1alpha1.ApplicationSource, error) {
+	/*if opts.ApplicationOpts.SourceOpts.Strategy == "Random" {
 		return generator.buildRandomSource(repositories)
+	}*/
+	//return generator.buildRandomSource(repositories)
+	//log.Printf("selecting from repos: %v", repositories)
+	filteredRepos, err := filterRepositories(repositories, "", sourcespec.RepoRegex)
+	if err != nil {
+		return v1alpha1.ApplicationSource{}, fmt.Errorf("Failed to filter repos for source spec %v: %v", sourcespec, err)
 	}
-	return generator.buildRandomSource(repositories)
+	if len(filteredRepos) == 0 {
+		return v1alpha1.ApplicationSource{}, fmt.Errorf("Failed to find matching repo for source spec %v", sourcespec)
+	}
+	repoNumber := seed.Int() % len(filteredRepos)
+	return v1alpha1.ApplicationSource{
+		RepoURL:        filteredRepos[repoNumber].Repo,
+		Path:           sourcespec.Path,
+		TargetRevision: sourcespec.TargetRevision,
+	}, nil
 }
 
-func (generator *ApplicationGenerator) buildRandomDestination(opts *util.GenerateOpts, clusters []v1alpha1.Cluster) (*v1alpha1.ApplicationDestination, error) {
-	seed := rand.New(rand.NewSource(time.Now().Unix()))
+func (generator *ApplicationGenerator) buildRandomDestination(opts util.ApplicationOpts, clusters []v1alpha1.Cluster) (*v1alpha1.ApplicationDestination, error) {
+	namespace := opts.DestinationOpts.Namespace
+	if "" == namespace {
+		namespace = opts.GeneratedName
+	}
 	clusterNumber := seed.Int() % len(clusters)
 	return &v1alpha1.ApplicationDestination{
-		Namespace: opts.Namespace,
+		Namespace: namespace,
 		Name:      clusters[clusterNumber].Name,
 	}, nil
 }
 
-func (generator *ApplicationGenerator) buildDestination(opts *util.GenerateOpts, clusters []v1alpha1.Cluster) (*v1alpha1.ApplicationDestination, error) {
-	if opts.ApplicationOpts.DestinationOpts.Strategy == "Random" {
+func (generator *ApplicationGenerator) buildDestination(opts util.ApplicationOpts, clusters []v1alpha1.Cluster) (*v1alpha1.ApplicationDestination, error) {
+	// FIXME
+	/*if opts.ApplicationOpts.DestinationOpts.Strategy == "Random" {
 		return generator.buildRandomDestination(opts, clusters)
-	}
+	}*/
 	return generator.buildRandomDestination(opts, clusters)
 }
 
@@ -72,29 +92,77 @@ func (generator *ApplicationGenerator) Generate(opts *util.GenerateOpts) error {
 		return err
 	}
 	applications := generator.argoClientSet.ArgoprojV1alpha1().Applications(opts.Namespace)
-	for i := 0; i < opts.ApplicationOpts.Samples; i++ {
-		log.Printf("Generate application #%v", i)
-		source, err := generator.buildSource(opts, repositories)
+	for i := 0; i < len(opts.ApplicationsOpts); i++ {
+		log.Printf("generating applications for spec %d", i)
+		err := generator.GenerateApplicationsForSpec(opts.ApplicationsOpts[i], repositories, clusters, applications)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to generate applications from spec #%d: %v", i, err)
 		}
-		log.Printf("Pick source %q", source)
-		destination, err := generator.buildDestination(opts, clusters.Items)
+	}
+	return nil
+}
+
+func (generator *ApplicationGenerator) GenerateApplicationsForSpec(spec util.ApplicationOpts,
+	repositories []*v1alpha1.Repository,
+	clusters *v1alpha1.ClusterList,
+	applications appclientsetv1alpha1.ApplicationInterface) error {
+	name := spec.Name
+	for i := 0; i < spec.Samples; i++ {
+		spec.GeneratedName = name + "-" + util.GetRandomString()[0:5]
+		log.Printf("Generate application %s#%v -> %s", name, i, spec.GeneratedName)
+		var srcPtr *v1alpha1.ApplicationSource
+		sources := []v1alpha1.ApplicationSource{}
+		if len(spec.SourcesOpts) > 0 {
+			for j := 0; j < len(spec.SourcesOpts); j++ {
+				tmpSrc, err := generator.buildSource(&spec.SourcesOpts[j], repositories)
+				if err != nil {
+					return err
+				}
+				log.Printf("Pick source %q", tmpSrc)
+				sources = append(sources, tmpSrc)
+			}
+		} else {
+			source, err := generator.buildSource(&spec.SourceOpts, repositories)
+			if err != nil {
+				return err
+			}
+			log.Printf("Pick source %q", source)
+			srcPtr = &source
+		}
+
+		destination, err := generator.buildDestination(spec, clusters.Items)
 		if err != nil {
 			return err
 		}
 		log.Printf("Pick destination %q", destination)
 		log.Printf("Create application")
+		isAutomated := true
+		syncPolicy := v1alpha1.SyncPolicy{
+			SyncOptions: []string{
+				"ServerSideApply=true",
+				"CreateNamespace=true",
+			},
+			Automated: &v1alpha1.SyncPolicyAutomated{
+				Enabled:    &isAutomated,
+				SelfHeal:   true,
+				Prune:      true,
+				AllowEmpty: true,
+			},
+		}
 		_, err = applications.Create(context.TODO(), &v1alpha1.Application{
 			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: "application-",
-				Namespace:    opts.Namespace,
-				Labels:       labels,
+				//GenerateName: name + "-",
+				Name:       spec.GeneratedName,
+				Namespace:  spec.Namespace,
+				Labels:     labels,
+				Finalizers: []string{"resources-finalizer.argocd.argoproj.io"},
 			},
 			Spec: v1alpha1.ApplicationSpec{
 				Project:     "default",
 				Destination: *destination,
-				Source:      source,
+				Sources:     sources,
+				Source:      srcPtr,
+				SyncPolicy:  &syncPolicy,
 			},
 		}, metav1.CreateOptions{})
 		if err != nil {

@@ -49,6 +49,7 @@ func NewCommand() *cobra.Command {
 
 func NewGenerateCommand(opts *util.GenerateOpts) *cobra.Command {
 	var file string
+	var accessToken string
 	command := &cobra.Command{
 		Use:   "generate [-f file]",
 		Short: "Generate entities",
@@ -59,6 +60,7 @@ func NewGenerateCommand(opts *util.GenerateOpts) *cobra.Command {
 			if err != nil {
 				log.Fatalf("Failed to retrieve configuration, %v", err.Error())
 			}
+			opts.GithubToken = accessToken
 			argoClientSet := util.ConnectToK8sArgoClientSet()
 			clientSet := util.ConnectToK8sClientSet()
 
@@ -89,6 +91,7 @@ func NewGenerateCommand(opts *util.GenerateOpts) *cobra.Command {
 		},
 	}
 	command.Flags().StringVarP(&file, "file", "f", "", "")
+	command.Flags().StringVarP(&accessToken, "accessToken", "t", "", "")
 	return command
 }
 

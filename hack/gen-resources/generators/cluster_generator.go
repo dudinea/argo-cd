@@ -78,18 +78,19 @@ func (cg *ClusterGenerator) getClusterCredentials(namespace string, releaseSuffi
 		Stdin:     true,
 		Stdout:    true,
 		Stderr:    true,
-		TTY:       true,
+		TTY:       false,
 	}
 
 	req := cg.clientSet.CoreV1().RESTClient().Post().Resource("pods").Name(POD_PREFIX + "-" + releaseSuffix + "-0").
 		Namespace(namespace).SubResource("exec")
-
+	log.Printf("req=%v", req)
 	req.VersionedParams(
 		option,
 		scheme.ParameterCodec,
 	)
 
-	exec, err := remotecommand.NewSPDYExecutor(cg.config, "POST", req.URL())
+	exec, err := remotecommand.NewWebSocketExecutor(cg.config, "POST", req.URL().String())
+	//exec, err := remotecommand.NewSPDYExecutor(cg.config, "POST", req.URL())
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -98,12 +99,17 @@ func (cg *ClusterGenerator) getClusterCredentials(namespace string, releaseSuffi
 		Stdin:  &stdin,
 		Stdout: &stdout,
 		Stderr: &stderr,
+		Tty:    false,
 	})
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
 	var config Config
+	cfgbytes := stdout.Bytes()
+	log.Printf("config %d is: %s", len(cfgbytes), string(cfgbytes))
+	errbytes := stderr.Bytes()
+	log.Printf("err is: %s", string(errbytes))
 
 	err = yaml.Unmarshal(stdout.Bytes(), &config)
 	if err != nil {
@@ -139,6 +145,7 @@ func (cg *ClusterGenerator) installVCluster(opts *util.GenerateOpts, namespace s
 		return err
 	}
 	log.Print("Execute helm install command")
+	//_, err = cmd.Freestyle("upgrade", "--install", releaseName, "vcluster", "--values", opts.ClusterOpts.ValuesFilePath, "--repo", "https://charts.loft.sh", "--namespace", namespace, "--repository-config", "", "--create-namespace", "--wait")
 	_, err = cmd.Freestyle("upgrade", "--install", releaseName, "vcluster", "--values", opts.ClusterOpts.ValuesFilePath, "--repo", "https://charts.loft.sh", "--namespace", namespace, "--repository-config", "", "--create-namespace", "--wait")
 	if err != nil {
 		return err
@@ -189,7 +196,7 @@ func (cg *ClusterGenerator) generate(i int, opts *util.GenerateOpts) error {
 	log.Print("Get cluster credentials")
 	caData, cert, key, err := cg.getClusterCredentials(namespace, releaseSuffix)
 
-	for o := 0; o < 5; o++ {
+	for o := 0; o < 15; o++ {
 		if err == nil {
 			break
 		}
