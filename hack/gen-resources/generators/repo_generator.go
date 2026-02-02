@@ -253,7 +253,7 @@ func (rg *RepoGenerator) MakeRepoSecrets(repos []Repo, opts *util.GenerateOpts) 
 	secrets := rg.clientSet.CoreV1().Secrets(opts.Namespace)
 	rg.bar.NewOption(0, int64(len(repos)))
 	for _, repo := range repos {
-		_, err = secrets.Create(context.TODO(), &corev1.Secret{
+		secretResource := corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: "repo-",
 				Namespace:    opts.Namespace,
@@ -270,7 +270,11 @@ func (rg *RepoGenerator) MakeRepoSecrets(repos []Repo, opts *util.GenerateOpts) 
 				"url":     []byte(repo.Url),
 				"project": []byte("default"),
 			},
-		}, metav1.CreateOptions{})
+		}
+		if opts.GithubToken != "" {
+			secretResource.Data["password"] = []byte(opts.GithubToken)
+		}
+		_, err = secrets.Create(context.TODO(), &secretResource, metav1.CreateOptions{})
 		rg.bar.Increment()
 		rg.bar.Play()
 	}
