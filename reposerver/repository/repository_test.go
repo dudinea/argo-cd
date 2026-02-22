@@ -3376,6 +3376,65 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 	}
 }
 
+func Test_populateHelmAppDetailsWithRefCheckoutError(t *testing.T) {
+	checkoutErrMsg := "dummy error"
+	repoURL := "https://github.com/foo/bar"
+	refRepoURL := "https://github.com/foo/baz"
+	repoRoot := "./testdata/my-chart/"
+	refRoot := "./testdata/values-files/"
+	refName := "$values"
+	targetRevision := "main"
+	sha := "888839659e542ed7de0c170a4fcc1c571b288888"
+	refTargetRevision := targetRevision
+	refSha := "999932039659e542ed7de0c170a4fcc1c5799999"
+	mockOpts := func(gitClient *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
+		gitClient.EXPECT().LsRemote(mock.Anything).Return(refSha, nil)
+		gitClient.EXPECT().Root().Return(repoRoot)
+		gitClient.EXPECT().Init().Return(nil)
+		gitClient.EXPECT().IsRevisionPresent(refSha).Return(true)
+		gitClient.EXPECT().Checkout(refSha, mock.Anything).Return("", nil)
+		paths.EXPECT().GetPath(refRepoURL).Return(refRoot, nil)
+		paths.EXPECT().GetPathIfExists(refRepoURL).Return(refRoot)
+	}
+	refGitClient := &gitmocks.Client{}
+	refGitClient.EXPECT().LsRemote("main").Return(refSha, nil)
+	refGitClient.EXPECT().Root().Return(refRoot)
+	refGitClient.EXPECT().Init().Return(nil)
+	refGitClient.EXPECT().IsRevisionPresent(refSha).Return(true)
+	refGitClient.EXPECT().Checkout(refSha, false).Return("", fmt.Errorf("%s", checkoutErrMsg))
+	// one error is not enough: checkout falls back to fetch specific revision
+	refGitClient.EXPECT().Fetch(refSha, int64(0)).Return(fmt.Errorf("%s", checkoutErrMsg))
+
+	service, _, _ := newServiceWithOpt(t, mockOpts, ".")
+	service.newGitClient = func(_ string, _ string, _ git.Creds, _ bool, _ bool, _ string, _ string, _ ...git.ClientOpts) (client git.Client, e error) {
+		return refGitClient, nil
+	}
+	res := apiclient.RepoAppDetailsResponse{}
+	q := apiclient.RepoServerAppDetailsQuery{
+		Repo: &v1alpha1.Repository{
+			Repo: repoURL,
+			Type: "git",
+		},
+		Source: &v1alpha1.ApplicationSource{
+			Helm: &v1alpha1.ApplicationSourceHelm{ValueFiles: []string{"$values/dir/values.yaml"}},
+		},
+		RefSources: map[string]*v1alpha1.RefTarget{
+			refName: {
+				Repo: v1alpha1.Repository{
+					Type: "git",
+					Repo: refRepoURL,
+				},
+				TargetRevision: refTargetRevision,
+			},
+		},
+	}
+	appPath, err := filepath.Abs(repoRoot)
+	require.NoError(t, err)
+	err = service.populateHelmAppDetails(&res, appPath, appPath, sha, "main", &q, service.gitRepoPaths)
+	require.ErrorContains(t, err, fmt.Sprintf("failed to acquire lock for referenced repo %q:", refRepoURL))
+	require.ErrorContains(t, err, checkoutErrMsg)
+}
+
 func Test_populateHelmAppDetailsWithRefSameRepoDiffRevision(t *testing.T) {
 	repoURL := "https://github.com/foo/bar"
 	repoRoot := "./testdata/my-chart/"
