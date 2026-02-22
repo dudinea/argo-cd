@@ -2283,7 +2283,6 @@ func (s *Service) populateHelmAppDetails(res *apiclient.RepoAppDetailsResponse, 
 			}
 			log.Debugf("Checking out repos for ref source %s  -> %s [%s]", refName, refSource.Repo.Repo, refSource.TargetRevision)
 			gitClient, refSHA, err := s.newClientResolveRevision(&refSource.Repo, refSource.TargetRevision)
-			// gitClient, err := s.newClient(&refSource.Repo)
 			if err != nil {
 				return fmt.Errorf("error setting up git client for %s and resolving revision %s: %w", refSource.Repo.Repo, refSource.TargetRevision, err)
 			}
@@ -2294,7 +2293,7 @@ func (s *Service) populateHelmAppDetails(res *apiclient.RepoAppDetailsResponse, 
 				return s.checkoutRevision(gitClient, refSHA, s.initConstants.SubmoduleEnabled, refSource.Repo.Depth)
 			})
 			if err != nil {
-				return fmt.Errorf("failed to acquire lock for referenced source %s: %w", refSource.Repo.Repo, err)
+				return fmt.Errorf("failed to acquire lock for referenced repo %q: %w", refSource.Repo.Repo, err)
 			}
 			defer utilio.Close(closer)
 			log.Debugf("Checked out referenced repo %s", refSource.Repo.Repo)
