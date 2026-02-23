@@ -3439,7 +3439,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 			},
 		},
 		{
-			name: "ref_checkout_error",
+			name: "ref_revision_resolution_error",
 			makeQuery: func() apiclient.RepoServerAppDetailsQuery {
 				return queryTemplate
 			},
