@@ -3326,10 +3326,6 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 	sha := "888839659e542ed7de0c170a4fcc1c571b288888"
 	refTargetRevision := targetRevision
 	refSha := "999932039659e542ed7de0c170a4fcc1c5799999"
-
-	/*service.newGitClient = func(_ string, _ string, _ git.Creds, _ bool, _ bool, _ string, _ string, _ ...git.ClientOpts) (client git.Client, e error) {
-		return refGitClient, nil
-	}*/
 	queryTemplate := apiclient.RepoServerAppDetailsQuery{
 		Repo: &v1alpha1.Repository{
 			Repo: repoURL,
@@ -3356,7 +3352,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 		name        string
 		makeQuery   func() apiclient.RepoServerAppDetailsQuery
 		testResults func(t *testing.T)
-		mockOpts    func(gitClient *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths)
+		mockOpts    func(_ *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths)
 		// make new client for accessing the referenced repository
 		newGitClient func(_ string, _ string, _ git.Creds, _ bool, _ bool, _ string, _ string, _ ...git.ClientOpts) (client git.Client, e error)
 	}{
@@ -3365,7 +3361,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 			makeQuery: func() apiclient.RepoServerAppDetailsQuery {
 				return queryTemplate
 			},
-			mockOpts: func(gitClient *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
+			mockOpts: func(_ *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
 				paths.EXPECT().GetPath(refRepoURL).Return(refRoot, nil)
 				paths.EXPECT().GetPathIfExists(refRepoURL).Return(refRoot)
 			},
@@ -3380,6 +3376,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 			},
 
 			testResults: func(t *testing.T) {
+				t.Helper()
 				require.NoError(t, err)
 				assert.Len(t, res.Helm.Parameters, 1)
 				// The values must come from the referenced values file ./testdata/values-files/dir/values.yaml
@@ -3394,7 +3391,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 			makeQuery: func() apiclient.RepoServerAppDetailsQuery {
 				return queryTemplate
 			},
-			mockOpts: func(gitClient *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
+			mockOpts: func(_ *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
 				paths.EXPECT().GetPath(refRepoURL).Return(refRoot, nil)
 			},
 			newGitClient: func(_ string, _ string, _ git.Creds, _ bool, _ bool, _ string, _ string, _ ...git.ClientOpts) (gitClient git.Client, e error) {
@@ -3410,6 +3407,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 			},
 
 			testResults: func(t *testing.T) {
+				t.Helper()
 				require.Error(t, err)
 				require.ErrorContains(t, err, fmt.Sprintf("failed to acquire lock for referenced repo %q:", refRepoURL))
 				assert.ErrorContains(t, err, dummyErrMsg)
@@ -3424,7 +3422,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 				return query
 			},
 
-			mockOpts: func(gitClient *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
+			mockOpts: func(_ *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
 				paths.EXPECT().GetPath(repoURL).Return(repoRoot, nil)
 			},
 			newGitClient: func(_ string, _ string, _ git.Creds, _ bool, _ bool, _ string, _ string, _ ...git.ClientOpts) (gitClient git.Client, e error) {
@@ -3434,6 +3432,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 			},
 
 			testResults: func(t *testing.T) {
+				t.Helper()
 				expMsg := fmt.Sprintf("cannot reference a different revision of the same repository (%s references %q which resolves to %q while the application references %q which resolves to %q", refName, "dev", refSha, targetRevision, sha)
 				require.Error(t, err)
 				require.ErrorContains(t, err, expMsg)
@@ -3444,7 +3443,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 			makeQuery: func() apiclient.RepoServerAppDetailsQuery {
 				return queryTemplate
 			},
-			mockOpts: func(gitClient *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
+			mockOpts: func(_ *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
 				paths.EXPECT().GetPath(repoURL).Return(repoRoot, nil)
 			},
 			newGitClient: func(_ string, _ string, _ git.Creds, _ bool, _ bool, _ string, _ string, _ ...git.ClientOpts) (gitClient git.Client, e error) {
@@ -3454,6 +3453,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 				return &client, nil
 			},
 			testResults: func(t *testing.T) {
+				t.Helper()
 				expMsg := fmt.Sprintf("error setting up git client for %s and resolving revision %s: %s", repoURL, "dev", dummyErrMsg)
 				require.Error(t, err)
 				require.ErrorContains(t, err, expMsg)
@@ -3466,7 +3466,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 				query.RefSources["$values"].Repo.Type = "oci"
 				return query
 			},
-			mockOpts: func(gitClient *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
+			mockOpts: func(_ *gitmocks.Client, _ *helmmocks.Client, _ *ocimocks.Client, paths *iomocks.TempPaths) {
 				paths.EXPECT().GetPath(refRepoURL).Return(refRoot, nil)
 				paths.EXPECT().GetPathIfExists(repoURL).Return(repoRoot)
 			},
@@ -3475,8 +3475,9 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 				return &client, nil
 			},
 			testResults: func(t *testing.T) {
+				t.Helper()
 				require.NoError(t, err)
-				assert.Len(t, res.Helm.Parameters, 0)
+				assert.Empty(t, res.Helm.Parameters)
 			},
 		},
 	}
