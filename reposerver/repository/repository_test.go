@@ -3485,9 +3485,7 @@ func Test_populateHelmAppDetailsWithRef(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			query := tc.makeQuery()
 			service, _, _ := newServiceWithOpt(t, tc.mockOpts, ".")
-			if tc.newGitClient != nil {
-				service.newGitClient = tc.newGitClient
-			}
+			service.newGitClient = tc.newGitClient
 			appPath, err = filepath.Abs(repoRoot)
 			require.NoError(t, err)
 			res = apiclient.RepoAppDetailsResponse{}
