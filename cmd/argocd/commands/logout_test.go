@@ -55,7 +55,7 @@ func TestLogout(t *testing.T) {
 }
 
 func TestRevokeServerToken_EmptyToken(t *testing.T) {
-	res, err := revokeServerToken("http", "localhost:8080", "", false)
+	res, err := revokeServerToken("http", "localhost:8080", "", "", false)
 	require.EqualError(t, err, "error getting token from local context file")
 	assert.Nil(t, res)
 }
@@ -76,11 +76,27 @@ func TestRevokeServerToken_SuccessfulRequest(t *testing.T) {
 	// Strip the "http://" prefix to get the hostName
 	hostName := server.Listener.Addr().String()
 
-	res, err := revokeServerToken("http", hostName, "test-token", false)
+	res, err := revokeServerToken("http", hostName, "", "test-token", false)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	assert.Equal(t, http.MethodPost, receivedMethod)
 	assert.Equal(t, "test-token", receivedCookie)
+}
+
+func TestRevokeServerToken_WithRootPath(t *testing.T) {
+	var receivedPath string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedPath = r.URL.Path
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	hostName := server.Listener.Addr().String()
+
+	res, err := revokeServerToken("http", hostName, "/argo-cd/", "test-token", false)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.Equal(t, "/argo-cd"+common.LogoutEndpoint, receivedPath)
 }
 
 func TestRevokeServerToken_ServerReturnsBadRequest(t *testing.T) {
@@ -91,7 +107,7 @@ func TestRevokeServerToken_ServerReturnsBadRequest(t *testing.T) {
 
 	hostName := server.Listener.Addr().String()
 
-	res, err := revokeServerToken("http", hostName, "test-token", false)
+	res, err := revokeServerToken("http", hostName, "", "test-token", false)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 }
@@ -99,10 +115,10 @@ func TestRevokeServerToken_ServerReturnsBadRequest(t *testing.T) {
 func TestRevokeServerToken_InvalidURL(t *testing.T) {
 	// A hostname containing a control character produces an invalid URL,
 	// causing http.NewRequestWithContext to fail.
-	res, err := revokeServerToken("http", "invalid\x00host", "test-token", false)
+	res, err := revokeServerToken("http", "invalid\x00host", "", "test-token", false)
 	require.Error(t, err)
 	assert.Nil(t, res)
-	assert.Contains(t, err.Error(), "invalid control character in URL")
+	assert.Contains(t, err.Error(), "invalid URL escape")
 }
 
 func TestRevokeServerToken_InsecureTLS(t *testing.T) {
@@ -114,12 +130,12 @@ func TestRevokeServerToken_InsecureTLS(t *testing.T) {
 	hostName := server.Listener.Addr().String()
 
 	// Without insecure, the self-signed cert should cause a failure
-	res, err := revokeServerToken("https", hostName, "test-token", false)
+	res, err := revokeServerToken("https", hostName, "", "test-token", false)
 	require.Error(t, err)
 	assert.Nil(t, res)
 
 	// With insecure=true, should succeed despite self-signed cert
-	res, err = revokeServerToken("https", hostName, "test-token", true)
+	res, err = revokeServerToken("https", hostName, "", "test-token", true)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 }
@@ -128,12 +144,17 @@ func TestRevokeServerToken_InsecureTLS(t *testing.T) {
 // pointing to the given address and returns the config file path.
 func createTestLocalConfig(t *testing.T, addr string) string {
 	t.Helper()
+	return createTestLocalConfigWithOptions(t, addr, addr, "", false, false)
+}
+
+func createTestLocalConfigWithOptions(t *testing.T, contextName, serverAddr, rootPath string, plainText, insecure bool) string {
+	t.Helper()
 	configFile := filepath.Join(t.TempDir(), "config")
 	cfg := localconfig.LocalConfig{
-		CurrentContext: addr,
-		Contexts:       []localconfig.ContextRef{{Name: addr, Server: addr, User: addr}},
-		Servers:        []localconfig.Server{{Server: addr}},
-		Users:          []localconfig.User{{Name: addr, AuthToken: "test-token"}},
+		CurrentContext: contextName,
+		Contexts:       []localconfig.ContextRef{{Name: contextName, Server: serverAddr, User: contextName}},
+		Servers:        []localconfig.Server{{Server: serverAddr, GRPCWebRootPath: rootPath, PlainText: plainText, Insecure: insecure}},
+		Users:          []localconfig.User{{Name: contextName, AuthToken: "test-token"}},
 	}
 	err := localconfig.WriteLocalConfig(cfg, configFile)
 	require.NoError(t, err)
@@ -188,6 +209,37 @@ func TestLogout_TLSCheckFails_AutoSetsPlainText(t *testing.T) {
 	localCfg, err = localconfig.ReadLocalConfig(configFile)
 	require.NoError(t, err)
 	assert.Empty(t, localCfg.GetToken(addr))
+}
+
+func TestLogout_UsesResolvedServerAndRootPathForTokenRevocation(t *testing.T) {
+	var receivedPath string
+	var receivedCookie string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		receivedPath = r.URL.Path
+		cookie, err := r.Cookie(common.AuthCookieName)
+		require.NoError(t, err)
+		receivedCookie = cookie.Value
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	contextName := "alias-context"
+	serverAddr := server.Listener.Addr().String()
+	configFile := createTestLocalConfigWithOptions(t, contextName, serverAddr, "/argo-cd", true, false)
+
+	localCfg, err := localconfig.ReadLocalConfig(configFile)
+	require.NoError(t, err)
+	assert.Equal(t, "test-token", localCfg.GetToken(contextName))
+
+	command := NewLogoutCommand(&argocdclient.ClientOptions{ConfigPath: configFile})
+	command.Run(nil, []string{contextName})
+
+	assert.Equal(t, "/argo-cd"+common.LogoutEndpoint, receivedPath)
+	assert.Equal(t, "test-token", receivedCookie)
+
+	localCfg, err = localconfig.ReadLocalConfig(configFile)
+	require.NoError(t, err)
+	assert.Empty(t, localCfg.GetToken(contextName))
 }
 
 // TestLogout_InsecureTLS_SetsInsecureFlag verifies that when the server has an

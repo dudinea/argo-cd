@@ -250,6 +250,44 @@ func TestCachedManifestResponse_HashBehavior(t *testing.T) {
 	assert.Empty(t, items)
 }
 
+func TestGetRefTargetRevisionMappingForCacheKey_UsesResolvedRevisionForUniqueRepo(t *testing.T) {
+	refTargets := v1alpha1.RefTargetRevisionMapping{
+		"values": {
+			Repo:           v1alpha1.Repository{Repo: "https://github.com/argoproj/example.git"},
+			TargetRevision: "main",
+		},
+	}
+
+	res := getRefTargetRevisionMappingForCacheKey(refTargets, ResolvedRevisions{
+		"https://github.com/argoproj/example": "resolved-sha",
+	})
+
+	require.Equal(t, "resolved-sha", res["values"].TargetRevision)
+	require.Equal(t, "main", refTargets["values"].TargetRevision)
+}
+
+func TestGetRefTargetRevisionMappingForCacheKey_PreservesPerRefRevisionsForDuplicateRepo(t *testing.T) {
+	refTargets := v1alpha1.RefTargetRevisionMapping{
+		"valuesA": {
+			Repo:           v1alpha1.Repository{Repo: "https://github.com/argoproj/example.git"},
+			TargetRevision: "branch-a",
+		},
+		"valuesB": {
+			Repo:           v1alpha1.Repository{Repo: "https://github.com/argoproj/example"},
+			TargetRevision: "branch-b",
+		},
+	}
+
+	res := getRefTargetRevisionMappingForCacheKey(refTargets, ResolvedRevisions{
+		"https://github.com/argoproj/example": "resolved-sha",
+	})
+
+	require.Equal(t, "branch-a", res["valuesA"].TargetRevision)
+	require.Equal(t, "branch-b", res["valuesB"].TargetRevision)
+	require.Equal(t, "branch-a", refTargets["valuesA"].TargetRevision)
+	require.Equal(t, "branch-b", refTargets["valuesB"].TargetRevision)
+}
+
 func getInMemoryCacheContents(t *testing.T, inMemCache *cacheutil.InMemoryCache) map[string]*CachedManifestResponse {
 	t.Helper()
 	items, err := inMemCache.Items(func() any { return &CachedManifestResponse{} })

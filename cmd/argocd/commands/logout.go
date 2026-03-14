@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -46,28 +48,41 @@ argocd logout cd.argoproj.io
 			if localCfg == nil {
 				log.Fatalf("Nothing to logout from")
 			}
+			resolvedContext, err := localCfg.ResolveContext(context)
+			errutil.CheckError(err)
+			serverAddr := resolvedContext.Server.Server
+
+			if !clientOpts.PlainText {
+				clientOpts.PlainText = resolvedContext.Server.PlainText
+			}
+			if !clientOpts.Insecure {
+				clientOpts.Insecure = resolvedContext.Server.Insecure
+			}
+			if clientOpts.GRPCWebRootPath == "" {
+				clientOpts.GRPCWebRootPath = resolvedContext.Server.GRPCWebRootPath
+			}
 
 			promptUtil := utils.NewPrompt(clientOpts.PromptsEnabled)
 
 			canLogout := promptUtil.Confirm(fmt.Sprintf("Are you sure you want to log out from '%s'?", context))
 			if canLogout {
-				if tlsTestResult, err := grpc_util.TestTLS(context, common.BearerTokenTimeout); err != nil {
-					log.Warnf("failed to check the TLS config settings for the server : %v.", err)
-					clientOpts.PlainText = true
-				} else {
-					if !tlsTestResult.TLS {
-						if !clientOpts.PlainText {
+				if !clientOpts.PlainText {
+					if tlsTestResult, err := grpc_util.TestTLS(serverAddr, common.BearerTokenTimeout); err != nil {
+						log.Warnf("failed to check the TLS config settings for the server : %v.", err)
+						clientOpts.PlainText = true
+					} else {
+						if !tlsTestResult.TLS {
 							if !cli.AskToProceed("WARNING: server is not configured with TLS. Proceed (y/n)? ") {
 								os.Exit(1)
 							}
 							clientOpts.PlainText = true
-						}
-					} else if tlsTestResult.InsecureErr != nil {
-						if !clientOpts.Insecure {
-							if !cli.AskToProceed(fmt.Sprintf("WARNING: server certificate had error: %s. Proceed insecurely (y/n)? ", tlsTestResult.InsecureErr)) {
-								os.Exit(1)
+						} else if tlsTestResult.InsecureErr != nil {
+							if !clientOpts.Insecure {
+								if !cli.AskToProceed(fmt.Sprintf("WARNING: server certificate had error: %s. Proceed insecurely (y/n)? ", tlsTestResult.InsecureErr)) {
+									os.Exit(1)
+								}
+								clientOpts.Insecure = true
 							}
-							clientOpts.Insecure = true
 						}
 					}
 				}
@@ -76,7 +91,7 @@ argocd logout cd.argoproj.io
 				if clientOpts.PlainText {
 					scheme = "http"
 				}
-				if res, err := revokeServerToken(scheme, context, localCfg.GetToken(context), clientOpts.Insecure); err != nil {
+				if res, err := revokeServerToken(scheme, serverAddr, clientOpts.GRPCWebRootPath, resolvedContext.User.AuthToken, clientOpts.Insecure); err != nil {
 					log.Warnf("failed to invalidate token on server: %v.", err)
 				} else {
 					_ = res.Body.Close()
@@ -110,11 +125,15 @@ argocd logout cd.argoproj.io
 }
 
 // revokeServerToken makes a call to the server logout endpoint to revoke the token server side
-func revokeServerToken(scheme, hostName, token string, insecure bool) (res *http.Response, err error) {
+func revokeServerToken(scheme, hostName, rootPath, token string, insecure bool) (res *http.Response, err error) {
 	if token == "" {
 		return nil, errors.New("error getting token from local context file")
 	}
-	logoutURL := fmt.Sprintf("%s://%s%s", scheme, hostName, common.LogoutEndpoint)
+	logoutURL := (&url.URL{
+		Scheme: scheme,
+		Host:   hostName,
+		Path:   logoutEndpointPath(rootPath),
+	}).String()
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, logoutURL, http.NoBody)
@@ -135,4 +154,12 @@ func revokeServerToken(scheme, hostName, token string, insecure bool) (res *http
 		client.Transport = tr
 	}
 	return client.Do(req)
+}
+
+func logoutEndpointPath(rootPath string) string {
+	rootPath = strings.Trim(rootPath, "/")
+	if rootPath == "" {
+		return common.LogoutEndpoint
+	}
+	return fmt.Sprintf("/%s%s", rootPath, common.LogoutEndpoint)
 }
