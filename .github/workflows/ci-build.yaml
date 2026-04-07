@@ -432,7 +432,7 @@ jobs:
           codecov_secret: ${{ secrets.CODECOV_TOKEN }}
           # when upgrading action version please update both this line and the
           # `uses:` key in the next step
-          sonarqube_scan_action_commit: "299e4b793aaa83bf2aba7c9c14bedbb485688ec4" # v7.1.0
+          uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
         run: |
           set -e
           set -o pipefail
@@ -440,7 +440,7 @@ jobs:
           SONARFLAVOUR="linux-$(uname -m | sed -e 's/x86_64/x64/g')"
           TMPSPEC=$(mktemp "${RUNNER_TEMP}/sonar-scanner-version-XXXXXX")
           # Get file with urls and checksums from the pinned action source
-          wget -O "$TMPSPEC" "https://raw.githubusercontent.com/SonarSource/sonarqube-scan-action/${sonarqube_scan_action_commit}/sonar-scanner-version"
+          wget -O "$TMPSPEC" "https://raw.githubusercontent.com/${uses}/sonar-scanner-version"
           sonarqube_scan_cli_version=$(cat "${TMPSPEC}" | grep ^sonar-scanner-version= | sed -e 's/^.*=//g')
           echo "Sonar scanner CLI version: ${sonarqube_scan_cli_version}"
           sonarqube_scan_cli_url=$(cat "${TMPSPEC}" | grep "^sonar-scanner-url-${SONARFLAVOUR}=" | sed -e 's/^.*=//g')
@@ -471,7 +471,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         # When upgrading action version please update both the `uses:` key here
         # and the `sonarqube_scan_action_commit:` in the previous step
-        uses: SonarSource/sonarqube-scan-action@299e4b793aaa83bf2aba7c9c14bedbb485688ec4 # v7.1.0
+        uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
         with:
           # download verified binary from the local temporary server
           scannerBinariesUrl:  "http://localhost:1500/"
