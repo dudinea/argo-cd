@@ -25,11 +25,14 @@ jobs:
     name: Validate PR Title
     runs-on: ubuntu-24.04
     steps:
-      - name: Harden the runner (Audit all outbound calls)
+      - name: Harden the runner (Block unknown outbound calls)
         if: ${{ vars.disable_harden_runner != 'true' }}
         uses: step-security/harden-runner@f808768d1510423e83855289c910610ca9b43176 # v2.17.0
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo-and-containers: "true"
+          allowed-endpoints: >
+            api.github.com:443
 
       - uses: thehanimo/pr-title-checker@7fbfe05602bdd86f926d3fb3bccb6f3aed43bc70 # v1.4.3
         with:
