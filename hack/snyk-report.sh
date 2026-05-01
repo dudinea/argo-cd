@@ -52,7 +52,7 @@ EOM
 argocd_dir=$(pwd)
 temp_dir=$(mktemp -d)
 cd "$temp_dir"
-git clone https://github.com/argoproj/argo-cd.git
+git clone https://github.com/dudinea/argo-cd.git
 cd argo-cd
 git checkout master
 
@@ -79,7 +79,7 @@ for version in $versions; do
   cp "$argocd_dir/.snyk" .snyk
 
   # || [ $? == 1 ] ignores errors due to vulnerabilities.
-  snyk test --all-projects --exclude=docs,site,ui-test --org=argoproj --policy-path=.snyk --sarif-file-output=/tmp/argocd-test.sarif --json-file-output=/tmp/argocd-test.json || [ $? == 1 ]
+  snyk test --all-projects --exclude=docs,site,ui-test --org=dudinea --policy-path=.snyk --sarif-file-output=/tmp/argocd-test.sarif --json-file-output=/tmp/argocd-test.json || [ $? == 1 ]
   snyk-to-html -i /tmp/argocd-test.json -o "$argocd_dir/docs/snyk/$version/argocd-test.html"
   { echo "|    | Critical | High | Medium | Low |"
     echo "|---:|:--------:|:----:|:------:|:---:|"
@@ -115,7 +115,7 @@ for version in $versions; do
 
     set -x
     # || [ $? == 1 ] ignores errors due to vulnerabilities.
-    snyk container test "$image" --org=argoproj "--json-file-output=/tmp/${image//[\/:]/_}.json" "${extra_args[@]}" || [ $? == 1 ]
+    snyk container test "$image" --org=dudinea "--json-file-output=/tmp/${image//[\/:]/_}.json" "${extra_args[@]}" || [ $? == 1 ]
     set +x
 
     snyk-to-html -i "/tmp/${image//[\/:]/_}.json" -o "$argocd_dir/docs/snyk/$version/${image//[\/:]/_}.html"
@@ -135,12 +135,12 @@ for version in $versions; do
   done <<< "$images"
 
   # || [ $? == 1 ] ignores errors due to vulnerabilities.
-  snyk iac test manifests/install.yaml --org=argoproj --policy-path=.snyk --sarif-file-output=/tmp/argocd-iac-install.sarif --json-file-output=/tmp/argocd-iac-install.json || [ $? == 1 ]
+  snyk iac test manifests/install.yaml --org=dudinea --policy-path=.snyk --sarif-file-output=/tmp/argocd-iac-install.sarif --json-file-output=/tmp/argocd-iac-install.json || [ $? == 1 ]
   snyk-to-html -i /tmp/argocd-iac-install.json -o "$argocd_dir/docs/snyk/$version/argocd-iac-install.html"
   echo "| [install.yaml]($version/argocd-iac-install.html) | - | - | - | - |" >> "$argocd_dir/docs/snyk/index.md"
 
   # || [ $? == 1 ] ignores errors due to vulnerabilities.
-  snyk iac test manifests/namespace-install.yaml --org=argoproj --policy-path=.snyk --sarif-file-output=/tmp/argocd-iac-namespace-install.sarif --json-file-output=/tmp/argocd-iac-namespace-install.json || [ $? == 1 ]
+  snyk iac test manifests/namespace-install.yaml --org=dudinea --policy-path=.snyk --sarif-file-output=/tmp/argocd-iac-namespace-install.sarif --json-file-output=/tmp/argocd-iac-namespace-install.json || [ $? == 1 ]
   snyk-to-html -i /tmp/argocd-iac-namespace-install.json -o "$argocd_dir/docs/snyk/$version/argocd-iac-namespace-install.html"
   echo "| [namespace-install.yaml]($version/argocd-iac-namespace-install.html) | - | - | - | - |" >> "$argocd_dir/docs/snyk/index.md"
 done
