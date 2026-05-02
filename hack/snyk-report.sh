@@ -63,6 +63,7 @@ version_count=3
 # When the most recent version is still a release candidate, get reports for 4 versions (so the 3 most recent stable
 # releases are included).
 if [[ $patch_num == "0-rc"* ]]; then version_count=4; fi
+version_count=1
 versions="$(get_latest_patch_versions "$version_count")"
 
 echo "Analyzing versions: $versions"
