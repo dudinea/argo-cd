@@ -16,7 +16,7 @@ jobs:
     permissions:
       contents: read
     #if: github.repository == 'argoproj/argo-cd'
-    name: Update Snyk report in the docs directory
+    name: Generate Snyk Report
     runs-on: ubuntu-24.04
     steps:
       - name: Harden the runner (Audit all outbound calls)
@@ -64,6 +64,7 @@ jobs:
           overwrite: true
 
   make-report-pr:
+    needs: snyk-report
     permissions:
       contents: write
       pull-requests: write
