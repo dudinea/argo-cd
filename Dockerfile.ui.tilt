@@ -1,4 +1,4 @@
-FROM node:24.14.1@sha256:80fc934952c8f1b2b4d39907af7211f8a9fff1a4c2cf673fb49099292c251cec
+FROM node:26.1.0@sha256:c41bbd71d4f71cc65ac836fae7ab69ad1b6ebc3bbfdac94d0ababa7fc1554b39
 
 WORKDIR /app/ui
 
