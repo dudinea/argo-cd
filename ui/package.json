@@ -129,7 +129,7 @@
     "raw-loader": "^0.5.1",
     "react-toastify": "9.0.3",
     "sass": "^1.100.0",
-    "sass-loader": "^14.2.1",
+    "sass-loader": "^17.0.0",
     "source-map-loader": "^5.0.0",
     "style-loader": "^4.0.0",
     "ts-jest": "^29.1.2",
