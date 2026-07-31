@@ -11,4 +11,4 @@ export TARGET_FILE=helm-v${HELM_VERSION}-${INSTALL_OS}-${ARCHITECTURE}.tar.gz
 "$(dirname "$0")"/compare-chksum.sh
 mkdir -p /tmp/helm && tar -C /tmp/helm -xf "$DOWNLOADS/${TARGET_FILE}"
 ${INSTALL_SUDO} install -m 0755 "/tmp/helm/$INSTALL_OS-$ARCHITECTURE/helm" "$BIN/helm"
-helm version
+"$BIN/helm" version
