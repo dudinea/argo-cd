@@ -5,7 +5,7 @@ module.exports = {
     allowedPostUpgradeCommands: [
         "make mockgen",
         "env INSTALL_SUDO=env BIN=\\./dist \\./hack/install\\.sh kustomize helm",
-        "sh -c 'PATH=\"\\./dist:\\$PATH\" \\./hack/update-manifests\\.sh'",
+        "env PATH=\\./dist:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \\./hack/update-manifests\\.sh",
         "hack/installers/checksums/add-helm-checksums.sh",
         "hack/installers/checksums/add-kustomize-checksums.sh",
         "hack/installers/checksums/add-git-lfs-checksums.sh",
