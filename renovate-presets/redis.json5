@@ -38,7 +38,7 @@
         "description": "Regenerate the install manifests and the rendered redis-ha chart.",
         "commands": [
           "env INSTALL_SUDO=env BIN=./dist ./hack/install.sh kustomize",
-          'env PATH="./dist:$PATH" make manifests-local'
+          './hack/update-manifests.sh'
         ],
         "fileFilters": [
           "manifests/**"
