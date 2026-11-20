@@ -1,9 +1,9 @@
 header:
   schema-version: 1.0.0
   expiration-date: '2024-10-31T00:00:00.000Z' # One year from initial release.
-  last-updated: '2026-09-16'
+  last-updated: '2026-10-22'
   last-reviewed: '2023-10-27'
-  commit-hash: b7e3f52c2827c5c9e0dd41d71b292bbeb66010be
+  commit-hash: 40f55e9e7ecce7361b4980dede3760c0802ec562
   project-url: https://github.com/argoproj/argo-cd
   project-release: v3.7.0
   changelog: https://github.com/argoproj/argo-cd/releases
